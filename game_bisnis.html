@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Bisnis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div class="container mx-auto p-4 max-w-4xl">
+        <header class="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold">Perjalanan Bisnis</h1>
+                <a href="idle_tycoon_game.html" class="text-sm text-purple-400 hover:underline">&larr; Kembali ke Idle Tycoon</a>
+            </div>
+            <div class="text-right mt-2 sm:mt-0">
+                <p class="text-gray-400 text-sm">Kas Perusahaan</p>
+                <p id="balance" class="text-2xl font-bold text-green-400">Rp 0</p>
+            </div>
+            <div class="text-right mt-2 sm:mt-0">
+                <p class="text-gray-400 text-sm">Valuasi Perusahaan</p>
+                <p id="valuation" class="text-2xl font-bold text-cyan-400">Rp 0</p>
+            </div>
+        </header>
+
+        <main id="game-container">
+            <!-- Konten akan dirender oleh JavaScript -->
+        </main>
+
+        <div id="history-panel" class="mt-6">
+            <!-- Panel riwayat akan dirender di sini -->
+        </div>
+    </div>
+
+    <script>
+        const stages = {
+            1: { name: "Tahap Ide", goal: 5000000, departments: {
+                'riset-pasar': { name: "Riset Pasar", icon: "📊", baseCost: 50000, baseIncome: 100, baseValuation: 200000 },
+                'prototipe-produk': { name: "Prototipe Produk", icon: "🧪", baseCost: 75000, baseIncome: 150, baseValuation: 300000 }
+            }},
+            2: { name: "Usaha Mikro", goal: 25000000, departments: {
+                'lini-produksi': { name: "Lini Produksi Awal", icon: "🏭", baseCost: 500000, baseIncome: 1000, baseValuation: 2000000 },
+                'rekrutmen-awal': { name: "Rekrut Tim Inti", icon: "👨‍💼", baseCost: 350000, baseIncome: 800, baseValuation: 1500000 }
+            }},
+            3: { name: "Ekspansi Lokal", goal: 100000000, departments: {
+                'pemasaran-digital': { name: "Pemasaran Digital", icon: "📈", baseCost: 2000000, baseIncome: 4000, baseValuation: 8000000 },
+                'kantor-pertama': { name: "Sewa Kantor", icon: "🏢", baseCost: 5000000, baseIncome: 2500, baseValuation: 10000000 }
+            }},
+            4: { name: "Menjadi PT", goal: 500000000, departments: {
+                'legalitas-pt': { name: "Urus Legalitas PT", icon: "📜", baseCost: 25000000, baseIncome: 10000, baseValuation: 50000000 },
+                'departemen-hr': { name: "Bentuk Departemen HR", icon: "👥", baseCost: 15000000, baseIncome: 8000, baseValuation: 30000000 }
+            }},
+            5: { name: "Skala Nasional", goal: 2000000000, departments: {
+                'riset-pengembangan': { name: "Departemen R&D", icon: "🔬", baseCost: 100000000, baseIncome: 50000, baseValuation: 250000000 },
+                'distribusi-nasional': { name: "Logistik & Distribusi", icon: "🚚", baseCost: 150000000, baseIncome: 60000, baseValuation: 300000000 }
+            }},
+            6: { name: "Persiapan IPO", goal: 10000000000, departments: {
+                'underwriter': { name: "Sewa Underwriter", icon: "💰", baseCost: 500000000, baseIncome: 200000, baseValuation: 1000000000 },
+                'roadshow': { name: "Roadshow Investor", icon: "✈️", baseCost: 300000000, baseIncome: 150000, baseValuation: 750000000 }
+            }},
+            7: { name: "IPO Berhasil!", goal: Infinity }
+        };
+
+        let gameState = { balance: 0, company: null, companyHistory: [] };
+
+        function formatCurrency(num) {
+            return `Rp ${Math.floor(num).toLocaleString('id-ID')}`;
+        }
+
+        function loadState() {
+            const savedData = localStorage.getItem('businessGameData');
+            if (savedData) gameState = JSON.parse(savedData);
+            if (!gameState.companyHistory) gameState.companyHistory = []; // Ensure history array exists
+        }
+
+        function saveState() {
+            localStorage.setItem('businessGameData', JSON.stringify(gameState));
+        }
+        
+        function render() {
+            const container = document.getElementById('game-container');
+            document.getElementById('balance').textContent = formatCurrency(gameState.balance);
+            
+            if (!gameState.company) {
+                container.innerHTML = `<div class="text-center bg-gray-800 p-8 rounded-lg">
+                        <h2 class="text-3xl font-bold mb-4">Mulai Perjalanan Bisnis Anda</h2>
+                        <p class="mb-6 text-gray-400">Beri nama perusahaan Anda dan pilih industri untuk memulai.</p>
+                        <div class="max-w-md mx-auto space-y-4">
+                            <input id="company-name" type="text" placeholder="Nama Perusahaan" class="w-full bg-gray-700 p-3 rounded">
+                            <input id="company-ticker" type="text" placeholder="Simbol Ticker (4 Huruf)" maxlength="4" class="w-full bg-gray-700 p-3 rounded uppercase">
+                            <select id="company-industry" class="w-full bg-gray-700 p-3 rounded">
+                                <option value="Teknologi">Teknologi</option> <option value="Kuliner">Kuliner</option> <option value="Properti">Properti</option>
+                            </select>
+                            <button id="start-company-btn" class="w-full bg-purple-600 hover:bg-purple-700 font-bold py-3 px-4 rounded">Mulai Perusahaan</button>
+                        </div></div>`;
+            } else {
+                const stageData = stages[gameState.company.stage];
+                const progress = Math.min(100, (gameState.company.valuation / stageData.goal) * 100);
+                document.getElementById('valuation').textContent = formatCurrency(gameState.company.valuation);
+
+                let departmentsHTML = '';
+                if(stageData.departments){
+                    departmentsHTML = Object.keys(stageData.departments).map(deptId => {
+                        const dept = stageData.departments[deptId];
+                        const level = gameState.company.departments[deptId] || 0;
+                        const cost = Math.floor(dept.baseCost * Math.pow(1.15, level));
+                        const income = Math.floor(dept.baseIncome * (level + 1));
+                        const canAfford = gameState.balance >= cost;
+
+                        return `<div class="bg-gray-700 p-4 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-bold">${dept.icon} ${dept.name}</p>
+                                        <p class="text-xs text-cyan-400">+${formatCurrency(income)}/detik</p>
+                                    </div>
+                                    <p class="font-bold text-lg">Lv. ${level}</p>
+                                </div>
+                                <button class="upgrade-dept-btn w-full mt-2 text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${deptId}" ${!canAfford ? 'disabled' : ''}>
+                                    Upgrade (${formatCurrency(cost)})
+                                </button>
+                            </div>`;
+                    }).join('');
+                }
+
+                let advanceButtonHTML = '';
+                if(progress >= 100 && gameState.company.stage < 7) {
+                    advanceButtonHTML = `<button id="advance-stage-btn" class="w-full mt-4 bg-purple-600 hover:bg-purple-700 font-bold py-3 rounded-lg">Lanjut ke Tahap: ${stages[gameState.company.stage + 1].name}</button>`;
+                } else if(gameState.company.stage >= 7) {
+                    advanceButtonHTML = `<div class="text-center p-4 mt-4 bg-green-800/50 rounded-lg">
+                            <h3 class="text-2xl font-bold text-green-300">SELAMAT!</h3>
+                            <p class="text-gray-300 mt-2">${gameState.company.name} telah berhasil IPO!</p>
+                            <button id="reset-btn" class="mt-4 bg-red-600 hover:bg-red-700 font-bold py-2 px-4 rounded">Mulai Bisnis Baru</button>
+                        </div>`;
+                }
+
+                container.innerHTML = `
+                    <div class="bg-gray-800 p-6 rounded-lg">
+                        <div class="text-center mb-6">
+                            <h2 class="text-3xl font-bold">${gameState.company.name} (${gameState.company.ticker})</h2>
+                            <p class="text-purple-400">${gameState.company.industry}</p>
+                        </div>
+                        <div class="mb-6">
+                            <div class="flex justify-between items-end mb-1">
+                                <h3 class="font-bold">Tahap: ${stageData.name}</h3>
+                                <p class="text-sm text-gray-400">Target Valuasi: ${formatCurrency(stageData.goal)}</p>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-6">
+                                <div class="bg-green-500 h-6 rounded-full text-center text-sm leading-6" style="width: ${progress}%">${progress.toFixed(1)}%</div>
+                            </div>
+                        </div>
+                        <h3 class="text-xl font-bold mb-4">Departemen</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           ${departmentsHTML}
+                        </div>
+                        ${advanceButtonHTML}
+                    </div>`;
+            }
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyPanel = document.getElementById('history-panel');
+            if (!gameState.companyHistory || gameState.companyHistory.length === 0) {
+                historyPanel.innerHTML = '';
+                return;
+            }
+
+            const historyItems = gameState.companyHistory.map(company => `
+                <div class="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+                    <div>
+                        <p class="font-bold">${company.name} (${company.ticker})</p>
+                        <p class="text-xs text-gray-400">${company.industry}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold text-cyan-400">Valuasi IPO</p>
+                        <p class="text-lg font-bold">${formatCurrency(company.finalValuation)}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            historyPanel.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h2 class="text-2xl font-bold mb-4">Riwayat Perusahaan Sukses</h2>
+                    <div class="space-y-3">
+                        ${historyItems}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function upgradeDepartment(deptId) {
+            const company = gameState.company;
+            const stageDepts = stages[company.stage].departments;
+            if(!stageDepts || !stageDepts[deptId]) return;
+
+            const dept = stageDepts[deptId];
+            const level = company.departments[deptId] || 0;
+            const cost = Math.floor(dept.baseCost * Math.pow(1.15, level));
+            
+            if(gameState.balance >= cost) {
+                gameState.balance -= cost;
+                company.departments[deptId] = level + 1;
+                company.valuation += dept.baseValuation * Math.pow(1.05, level);
+                saveState();
+                render();
+            }
+        }
+        
+        function goPublic() {
+            const company = gameState.company;
+            if (!gameState.companyHistory) gameState.companyHistory = [];
+            gameState.companyHistory.push({
+                name: company.name,
+                ticker: company.ticker,
+                industry: company.industry,
+                finalValuation: company.valuation
+            });
+
+            const stockExchangeData = JSON.parse(localStorage.getItem('stockExchangeData')) || { balance: 0, portfolio: {}, marketPrices: {} };
+            stockExchangeData.marketPrices[company.ticker] = {
+                name: company.name, price: company.valuation / 100000, history: Array(50).fill(company.valuation / 100000)
+            };
+            localStorage.setItem('stockExchangeData', JSON.stringify(stockExchangeData));
+            alert(`${company.name} (${company.ticker}) berhasil IPO! Cek di platform Bursa Saham.`);
+        }
+
+        function updateLiveValues() {
+             if (gameState.company && gameState.company.stage < 7) {
+                let totalIncomePerSecond = 0;
+                const stageDepts = stages[gameState.company.stage].departments;
+                for (const deptId in stageDepts) {
+                    const level = gameState.company.departments[deptId] || 0;
+                    if (level > 0) {
+                        totalIncomePerSecond += Math.floor(stageDepts[deptId].baseIncome * level);
+                    }
+                }
+                gameState.balance += totalIncomePerSecond;
+                
+                document.getElementById('balance').textContent = formatCurrency(gameState.balance);
+                document.getElementById('valuation').textContent = formatCurrency(gameState.company.valuation);
+
+                const stageData = stages[gameState.company.stage];
+                const progress = Math.min(100, (gameState.company.valuation / stageData.goal) * 100);
+                const progressBar = document.querySelector('.bg-green-500');
+                if(progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                    progressBar.textContent = `${progress.toFixed(1)}%`;
+                }
+            }
+        }
+
+        document.body.addEventListener('click', e => {
+            if (e.target.id === 'start-company-btn') {
+                const name = document.getElementById('company-name').value;
+                const ticker = document.getElementById('company-ticker').value.toUpperCase();
+                const industry = document.getElementById('company-industry').value;
+                if (name && ticker && ticker.length === 4 && industry) {
+                    gameState.company = { name, ticker, industry, stage: 1, valuation: 0, departments: {} };
+                    saveState();
+                    render();
+                } else {
+                    alert('Harap isi semua kolom dengan benar (Ticker harus 4 huruf).');
+                }
+            }
+            if (e.target.closest('.upgrade-dept-btn')) {
+                upgradeDepartment(e.target.closest('.upgrade-dept-btn').dataset.id);
+            }
+            if (e.target.id === 'advance-stage-btn') {
+                if (gameState.company.stage < 7) {
+                    gameState.company.stage++;
+                    if(gameState.company.stage === 7) goPublic();
+                    saveState();
+                    render();
+                }
+            }
+            if (e.target.id === 'reset-btn') {
+                gameState.company = null;
+                saveState();
+                render();
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            loadState();
+            render();
+        });
+
+        loadState();
+        render();
+        setInterval(updateLiveValues, 1000);
+        setInterval(saveState, 5000);
+    </script>
+</body>
+</html>
+

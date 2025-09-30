@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toko Upgrade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4 max-w-4xl">
+        <header class="bg-gray-800 p-4 rounded-lg mb-4 flex justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold">Toko Upgrade</h1>
+                <a href="idle_tycoon_game.html" class="text-sm text-purple-400 hover:underline">&larr; Kembali ke Idle Tycoon</a>
+            </div>
+            <div class="text-right">
+                <p class="text-gray-400 text-sm">Saldo Tunai Anda</p>
+                <p id="balance" class="text-2xl font-bold text-green-400">Rp 0</p>
+            </div>
+        </header>
+
+        <main id="shop-items-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Shop items will be rendered here by JS -->
+        </main>
+    </div>
+
+    <script>
+        const shopItems = {
+            'doubleClickValue': {
+                name: 'Gandakan Nilai Klik',
+                description: 'Menggandakan uang dari setiap klik di game utama.',
+                icon: '🖱️',
+                cost: 250000,
+                duration: 3600, // 1 jam
+            },
+            'offlineEarnings': {
+                name: 'Bonus Pendapatan Offline',
+                description: 'Meningkatkan pendapatan pasif saat game tidak dibuka sebesar 50%.',
+                icon: '💤',
+                cost: 1000000,
+                duration: 86400, // 24 jam
+            },
+            'businessIncomeBoost': {
+                name: 'Investor Cerdas',
+                description: 'Meningkatkan semua pendapatan dari Game Bisnis sebesar 25%.',
+                icon: '💼',
+                cost: 5000000,
+                duration: 7200, // 2 jam
+            },
+            'upgradeDiscount': {
+                name: 'Diskon Upgrade Bisnis',
+                description: 'Memberikan diskon sebesar 10% untuk semua biaya upgrade di Game Bisnis.',
+                icon: '🏷️',
+                cost: 3000000,
+                duration: 14400, // 4 jam
+            },
+            'managerCostDiscount': {
+                name: 'Lobi Manajer',
+                description: 'Memberikan diskon sebesar 25% untuk biaya rekrut manajer.',
+                icon: '🤝',
+                cost: 2000000,
+                duration: 10800, // 3 jam
+            },
+            'globalProductionBoost': {
+                name: 'Efisiensi Global',
+                description: 'Meningkatkan kecepatan produksi semua bisnis sebesar 10%.',
+                icon: '🚀',
+                cost: 8000000,
+                duration: 7200, // 2 jam
+            },
+             'passiveIncome': {
+                name: 'Bunga Bank',
+                description: 'Dapatkan bunga 0.1% dari saldo Idle Tycoon Anda setiap menit.',
+                icon: '🏦',
+                cost: 12000000,
+                duration: 86400, // 24 jam
+            },
+            'tradingFeeDiscount': {
+                name: 'Diskon Biaya Trading',
+                description: 'Mengurangi biaya transaksi di Platform Trading (Forex/Crypto) sebesar 50%.',
+                icon: '📉',
+                cost: 6000000,
+                duration: 18000, // 5 jam
+            },
+            'exchangeFeeDiscount': {
+                name: 'Diskon Biaya Bursa',
+                description: 'Mengurangi biaya transaksi (fee) di Bursa Saham sebesar 50%.',
+                icon: '🧾',
+                cost: 5000000,
+                duration: 18000, // 5 jam
+            },
+            'robotProfitBoost': {
+                name: 'Algoritma Canggih',
+                description: 'Meningkatkan profitabilitas Robot Trading sebesar 15%.',
+                icon: '🤖',
+                cost: 20000000,
+                duration: 43200, // 12 jam
+            }
+        };
+
+        let money = 0;
+        let upgrades = {}; // Format: { upgradeId: expiryTimestamp, ... }
+
+        const balanceEl = document.getElementById('balance');
+        const shopContainerEl = document.getElementById('shop-items-container');
+
+        function formatCurrency(num) {
+            return `Rp ${Math.floor(num).toLocaleString('id-ID')}`;
+        }
+
+        function formatDuration(seconds) {
+            if (seconds <= 0) return "Selesai";
+            const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function loadState() {
+            const savedMoney = localStorage.getItem('idleTycoonMoney');
+            const savedUpgrades = localStorage.getItem('shopUpgrades');
+            if (savedMoney) money = parseFloat(savedMoney);
+            if (savedUpgrades) upgrades = JSON.parse(savedUpgrades);
+        }
+
+        function saveState() {
+            localStorage.setItem('idleTycoonMoney', money);
+            localStorage.setItem('shopUpgrades', JSON.stringify(upgrades));
+        }
+
+        function renderShop() {
+            balanceEl.textContent = formatCurrency(money);
+            shopContainerEl.innerHTML = Object.keys(shopItems).map(id => {
+                const item = shopItems[id];
+                const expiryTimestamp = upgrades[id];
+                const isActive = expiryTimestamp && expiryTimestamp > Date.now();
+                const canAfford = money >= item.cost;
+                
+                let buttonHTML = '';
+                if (isActive) {
+                    const remainingSeconds = (expiryTimestamp - Date.now()) / 1000;
+                    buttonHTML = `
+                    <div class="w-full mt-4 text-center">
+                        <p class="text-sm font-bold text-green-400">AKTIF</p>
+                        <p class="text-lg font-mono timer" data-expiry="${expiryTimestamp}">${formatDuration(remainingSeconds)}</p>
+                    </div>`;
+                } else {
+                    buttonHTML = `
+                    <button class="buy-item-btn w-full mt-4 font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
+                        Beli (${formatCurrency(item.cost)})
+                        <br>
+                        <span class="text-xs font-normal">Durasi: ${formatDuration(item.duration)}</span>
+                    </button>`;
+                }
+
+                return `
+                <div class="bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col">
+                    <div class="text-4xl mb-2">${item.icon}</div>
+                    <h3 class="text-xl font-bold text-yellow-400">${item.name}</h3>
+                    <p class="text-gray-400 text-sm flex-grow my-2">${item.description}</p>
+                    ${buttonHTML}
+                </div>`;
+            }).join('');
+        }
+
+        function updateTimers() {
+            document.querySelectorAll('.timer').forEach(timerEl => {
+                const expiry = parseInt(timerEl.dataset.expiry);
+                const remaining = (expiry - Date.now()) / 1000;
+                if (remaining > 0) {
+                    timerEl.textContent = formatDuration(remaining);
+                } else {
+                    // Once expired, re-render the whole shop to show the buy button again
+                    renderShop();
+                }
+            });
+        }
+
+        shopContainerEl.addEventListener('click', (e) => {
+            const buyBtn = e.target.closest('.buy-item-btn');
+            if (buyBtn) {
+                const id = buyBtn.dataset.id;
+                const item = shopItems[id];
+                // Prevent re-buying if it's already active (edge case)
+                if (upgrades[id] && upgrades[id] > Date.now()) return;
+
+                if (money >= item.cost) {
+                    money -= item.cost;
+                    const expiryTimestamp = Date.now() + (item.duration * 1000);
+                    upgrades[id] = expiryTimestamp;
+                    saveState();
+                    renderShop();
+                }
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            loadState();
+            renderShop();
+        });
+
+        // Game Loop for timers
+        setInterval(updateTimers, 1000);
+
+        // Initial Load
+        loadState();
+        renderShop();
+    </script>
+</body>
+</html>
+

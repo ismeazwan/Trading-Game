@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Trading Profesional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js and necessary plugins for candlestick chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@^2.0.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@^1.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@^0.1.1"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; height: 40vh; width: 100%; }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .robot-tab-active, .trade-tab-active {
+            border-color: #9333ea; /* purple-600 */
+            background-color: #374151; /* gray-700 */
+        }
+        /* News Ticker Animation */
+        .ticker-wrap {
+            position: relative;
+            overflow: hidden;
+            height: 2rem;
+            background-color: rgba(0,0,0,0.2);
+            padding-left: 100%;
+        }
+        .ticker-move {
+            position: absolute;
+            white-space: nowrap;
+            will-change: transform;
+            animation: ticker 20s linear infinite;
+        }
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+        /* Price change flash effect */
+        .price-flash-up { animation: flash-green 0.7s ease-out; }
+        .price-flash-down { animation: flash-red 0.7s ease-out; }
+        @keyframes flash-green { 
+            0% { background-color: rgba(74, 222, 128, 0.5); } 
+            100% { background-color: transparent; }
+        }
+        @keyframes flash-red {
+             0% { background-color: rgba(248, 113, 113, 0.5); }
+             100% { background-color: transparent; } 
+        }
+        /* Notification Toast */
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            right: 30px;
+            bottom: 30px;
+            font-size: 17px;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .strategy-card.selected {
+            border-color: #a855f7; /* purple-500 */
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div class="container mx-auto p-4 max-w-7xl">
+        <div class="bg-gray-800 rounded-lg mb-4 ticker-wrap">
+             <div class="ticker-move">
+                <div id="news-ticker" class="py-1 text-sm text-gray-300">Memuat berita pasar...</div>
+            </div>
+        </div>
+
+        <header class="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold">Platform Trading</h1>
+                <a href="idle_tycoon_game.html" class="text-sm text-purple-400 hover:underline">&larr; Kembali ke Idle Tycoon</a>
+            </div>
+            <div class="text-right mt-2 sm:mt-0">
+                <p class="text-gray-400 text-sm">Saldo Tunai</p>
+                <p id="balance" class="text-2xl font-bold text-green-400">Rp 0</p>
+            </div>
+            <div class="text-right mt-2 sm:mt-0">
+                <p class="text-gray-400 text-sm">Nilai Portofolio</p>
+                <p id="portfolio-value" class="text-2xl font-bold text-cyan-400">Rp 0</p>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-1 bg-gray-800 p-4 rounded-lg shadow-lg">
+                <div class="flex border-b border-gray-700 mb-2">
+                    <button class="asset-tab-button flex-1 py-2 text-sm border-b-2 border-purple-500" data-tab="stocks">Saham</button>
+                    <button class="asset-tab-button flex-1 py-2 text-sm border-b-2 border-transparent" data-tab="forex">Forex</button>
+                    <button class="asset-tab-button flex-1 py-2 text-sm border-b-2 border-transparent" data-tab="crypto">Kripto</button>
+                    <button class="asset-tab-button flex-1 py-2 text-sm border-b-2 border-transparent" data-tab="commodities">Komoditas</button>
+                </div>
+                <div id="asset-list" class="space-y-2 max-h-[60vh] overflow-y-auto">
+                    </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-gray-800 p-4 rounded-lg shadow-lg">
+                <div id="trading-view-placeholder" class="text-center text-gray-500 flex items-center justify-center h-full">
+                    <p>Pilih aset dari daftar untuk memulai trading.</p>
+                </div>
+                <div id="trading-view" class="hidden">
+                    <div class="flex justify-between items-start mb-1">
+                        <h2 id="current-asset-name" class="text-2xl font-bold"></h2>
+                        <span id="auto-analysis-signal" class="text-sm font-bold px-3 py-1 rounded-full text-center"></span>
+                    </div>
+                    <p id="current-asset-price" class="text-lg font-semibold"></p>
+                    <div class="chart-container my-4">
+                        <canvas id="asset-chart"></canvas>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="flex border-b border-gray-600 mb-3">
+                                <button class="trade-type-btn flex-1 py-2 text-sm border-b-2 trade-tab-active" data-panel="buy" data-type="market">Market</button>
+                                <button class="trade-type-btn flex-1 py-2 text-sm border-b-2 border-transparent" data-panel="buy" data-type="limit">Limit</button>
+                            </div>
+                            <h3 class="text-lg font-bold text-green-400">Beli <span id="buy-type-label">Market</span></h3>
+                            <div class="mt-2 space-y-2">
+                                <div id="buy-limit-price-group" class="hidden">
+                                    <label class="text-sm">Harga Limit</label>
+                                    <input type="number" id="buy-limit-price" class="w-full bg-gray-800 p-2 rounded" placeholder="Harga beli">
+                                </div>
+                                <label class="text-sm"><span id="buy-quantity-label-text">Jumlah</span></label>
+                                <input type="number" id="buy-quantity" class="w-full bg-gray-800 p-2 rounded" placeholder="0">
+                                <div class="grid grid-cols-4 gap-2 text-xs">
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="buy" data-value="0.1">10%</button>
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="buy" data-value="0.25">25%</button>
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="buy" data-value="0.5">50%</button>
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="buy" data-value="1">MAX</button>
+                                </div>
+                                <p class="text-sm">Estimasi Biaya: <span id="buy-estimate">Rp 0</span></p>
+                                <button id="buy-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Beli</button>
+                            </div>
+                        </div>
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                             <div class="flex border-b border-gray-600 mb-3">
+                                <button class="trade-type-btn flex-1 py-2 text-sm border-b-2 trade-tab-active" data-panel="sell" data-type="market">Market</button>
+                                <button class="trade-type-btn flex-1 py-2 text-sm border-b-2 border-transparent" data-panel="sell" data-type="limit">Limit</button>
+                            </div>
+                            <h3 class="text-lg font-bold text-red-400">Jual <span id="sell-type-label">Market</span></h3>
+                            <div class="mt-2 space-y-2">
+                                <div id="sell-limit-price-group" class="hidden">
+                                    <label class="text-sm">Harga Limit</label>
+                                    <input type="number" id="sell-limit-price" class="w-full bg-gray-800 p-2 rounded" placeholder="Harga jual">
+                                </div>
+                                <label class="text-sm"><span id="sell-quantity-label-text">Jumlah</span> (Milik Anda: <span id="owned-quantity">0</span>)</label>
+                                <input type="number" id="sell-quantity" class="w-full bg-gray-800 p-2 rounded" placeholder="0">
+                                 <div class="grid grid-cols-4 gap-2 text-xs">
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="sell" data-value="0.1">10%</button>
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="sell" data-value="0.25">25%</button>
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="sell" data-value="0.5">50%</button>
+                                    <button class="amount-btn bg-gray-600/50 py-1 rounded-md" data-type="sell" data-value="1">MAX</button>
+                                </div>
+                                <p class="text-sm">Estimasi Nilai: <span id="sell-estimate">Rp 0</span></p>
+                                <button id="sell-button" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Jual</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-700/50 mt-4 p-4 rounded-lg">
+                        <h3 class="text-lg font-bold mb-2">Order Aktif</h3>
+                        <div id="active-orders-list" class="space-y-2 max-h-32 overflow-y-auto">
+                           <p class="text-gray-500">Tidak ada order limit yang aktif.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+             <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-2">Portofolio Anda</h2>
+                <div id="portfolio-list" class="max-h-48 overflow-y-auto">
+                    <p class="text-gray-500">Anda belum memiliki aset.</p>
+                </div>
+            </div>
+             <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-2">Tarik Dana</h2>
+                <div class="flex items-center space-x-2">
+                    <input type="number" id="withdraw-amount" placeholder="Jumlah penarikan" class="bg-gray-900 text-white text-center rounded-md w-full py-2">
+                    <button id="withdraw-max-button" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded text-sm">MAX</button>
+                    <button id="withdraw-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Tarik
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Dana akan dikembalikan ke saldo Idle Tycoon Game Anda.</p>
+            </div>
+             <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-2">Upgrades</h2>
+                <div id="upgrades-list" class="space-y-2">
+                   </div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg mt-4">
+            <h2 class="text-2xl font-bold mb-4 text-cyan-400">Log Transaksi</h2>
+            <div id="transaction-log-list" class="space-y-2 max-h-96 overflow-y-auto">
+                <p class="text-gray-500 text-center">Belum ada transaksi yang tercatat.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // --- ASET DATA & STATE SETUP ---
+        const assetData = {
+            stocks: {
+                FOOD: { name: "Saham Makanan", basePrice: 50, volatility: 0.1 },
+                TECH: { name: "Saham Teknologi", basePrice: 200, volatility: 0.3 },
+                HEAL: { name: "Saham Kesehatan", basePrice: 120, volatility: 0.08 },
+                BANK: { name: "Saham Perbankan", basePrice: 150, volatility: 0.12 },
+                AUTO: { name: "Saham Otomotif", basePrice: 85, volatility: 0.2 },
+                MINE: { name: "Saham Pertambangan", basePrice: 110, volatility: 0.25 },
+            },
+            forex: {
+                EURUSD: { name: "EUR/USD", basePrice: 1.08, volatility: 0.005, decimals: 5 },
+                GBPJPY: { name: "GBP/JPY", basePrice: 198.50, volatility: 0.02, decimals: 3 },
+                AUDCAD: { name: "AUD/CAD", basePrice: 0.89, volatility: 0.008, decimals: 5 },
+                USDJPY: { name: "USD/JPY", basePrice: 157.00, volatility: 0.015, decimals: 3 },
+                EURGBP: { name: "EUR/GBP", basePrice: 0.84, volatility: 0.004, decimals: 5 },
+                NZDUSD: { name: "NZD/USD", basePrice: 0.61, volatility: 0.009, decimals: 5 },
+            },
+            crypto: {
+                BTC: { name: "Bitcoin", basePrice: 65000, volatility: 0.5 },
+                ETH: { name: "Ethereum", basePrice: 3500, volatility: 0.6 },
+                SOL: { name: "Solana", basePrice: 150, volatility: 0.9 },
+                DOGE: { name: "Dogecoin", basePrice: 0.15, volatility: 1.5 },
+                XRP: { name: "Ripple", basePrice: 0.5, volatility: 1.2 },
+                ADA: { name: "Cardano", basePrice: 0.45, volatility: 1.1 },
+            },
+            commodities: {
+                XAU: { name: "Emas", basePrice: 2300, volatility: 0.15 },
+                OIL: { name: "Minyak", basePrice: 80, volatility: 0.25 },
+                XAG: { name: "Perak", basePrice: 28, volatility: 0.2 },
+                GAS: { name: "Gas Alam", basePrice: 2.8, volatility: 0.4 },
+                CORN: { name: "Jagung", basePrice: 450, volatility: 0.18 },
+                COPR: { name: "Tembaga", basePrice: 4.5, volatility: 0.22 },
+            }
+        };
+
+        const UPGRADES = {
+            fastRobot: { name: 'Analisis Robot Cepat', description: 'Meningkatkan kecepatan pemindaian sinyal robot.', cost: 5000000 },
+            feeDiscount: { name: 'Diskon Biaya Transaksi', description: 'Mengurangi biaya transaksi sebesar 50%.', cost: 10000000 }
+        };
+
+        const defaultTradingState = { 
+            balance: 1e7, 
+            portfolio: {}, 
+            marketPrices: {}, 
+            priceHistory: {}, 
+            limitOrders: [],
+            transactionLog: [],
+            upgrades: {}
+        };
+        
+        let tradingState = JSON.parse(JSON.stringify(defaultTradingState));
+        let activeAssetTab = 'stocks';
+        let selectedAsset = { category: null, id: null };
+        let activeTradeType = { buy: 'market', sell: 'market' };
+        let assetChart = null;
+        let gameLoopInterval = null;
+
+        // --- Element Caching ---
+        const balanceEl = document.getElementById('balance');
+        const portfolioValueEl = document.getElementById('portfolio-value');
+        const assetListEl = document.getElementById('asset-list');
+        const tradingViewEl = document.getElementById('trading-view');
+        const tradingViewPlaceholderEl = document.getElementById('trading-view-placeholder');
+        const currentAssetNameEl = document.getElementById('current-asset-name');
+        const currentAssetPriceEl = document.getElementById('current-asset-price');
+        const autoAnalysisSignalEl = document.getElementById('auto-analysis-signal');
+        const ownedQuantityEl = document.getElementById('owned-quantity');
+        const buyTypeLabel = document.getElementById('buy-type-label');
+        const buyLimitPriceGroup = document.getElementById('buy-limit-price-group');
+        const buyLimitPriceInput = document.getElementById('buy-limit-price');
+        const buyQuantityInput = document.getElementById('buy-quantity');
+        const buyEstimateEl = document.getElementById('buy-estimate');
+        const buyButton = document.getElementById('buy-button');
+        const sellTypeLabel = document.getElementById('sell-type-label');
+        const sellLimitPriceGroup = document.getElementById('sell-limit-price-group');
+        const sellLimitPriceInput = document.getElementById('sell-limit-price');
+        const sellQuantityInput = document.getElementById('sell-quantity');
+        const sellEstimateEl = document.getElementById('sell-estimate');
+        const sellButton = document.getElementById('sell-button');
+        const activeOrdersListEl = document.getElementById('active-orders-list');
+        const portfolioListEl = document.getElementById('portfolio-list');
+        const upgradesListEl = document.getElementById('upgrades-list');
+        const transactionLogListEl = document.getElementById('transaction-log-list');
+
+        // --- Formatting & State Management ---
+        function formatWithSuffix(num, prefix = '') {
+            if (typeof num !== 'number' || isNaN(num)) num = 0;
+
+            if (Math.abs(num) < 1e6) {
+                return `${prefix}${num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            const suffixes = ['Jt', 'M', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg', 'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg', 'Qag', 'Uqag', 'Dqag', 'Tqag', 'Qaqag', 'Qiqag', 'Sxqag'];
+            const tier = Math.floor(Math.log10(Math.abs(num)) / 3);
+
+            if (tier < 2) {
+                 return `${prefix}${num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+            
+            const suffix = suffixes[tier - 2];
+            if (!suffix) {
+                return `${prefix}${num.toExponential(2)}`;
+            }
+
+            const scale = Math.pow(10, tier * 3);
+            const scaled = num / scale;
+            return `${prefix}${scaled.toFixed(2)} ${suffix}`;
+        }
+
+        function formatCurrency(num, decimals) {
+            if (decimals !== undefined && Math.abs(num) < 1e6) {
+                 return `Rp ${num.toLocaleString('id-ID', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+            }
+            return formatWithSuffix(num, 'Rp ');
+        }
+        
+        function formatNumber(num) {
+            if (Math.abs(num) < 1e6) {
+                 const maxDecimals = num < 1000 ? 8 : 2;
+                const fixedNum = num.toFixed(maxDecimals);
+                return fixedNum.includes('.') ? fixedNum.replace(/\.?0+$/, "") : fixedNum;
+            }
+            return formatWithSuffix(num);
+        }
+
+        function initializeState() {
+            const state = JSON.parse(JSON.stringify(defaultTradingState));
+            for (const cat in assetData) {
+                state.marketPrices[cat] = {};
+                state.priceHistory[cat] = {};
+                for (const id in assetData[cat]) {
+                    const basePrice = assetData[cat][id].basePrice;
+                    state.marketPrices[cat][id] = basePrice;
+                    state.priceHistory[cat][id] = Array(100).fill(basePrice);
+                }
+            }
+            return state;
+        }
+
+        function loadState() {
+            const savedData = localStorage.getItem('tradingPlatformSaveData');
+            const cleanState = initializeState();
+            if (savedData) {
+                try {
+                    const loadedState = JSON.parse(savedData);
+                    tradingState = { ...cleanState, ...loadedState };
+                } catch (e) {
+                    console.error("Gagal memuat data trading, memulai sesi baru.", e);
+                    tradingState = cleanState;
+                }
+            } else {
+                tradingState = cleanState;
+            }
+        }
+        
+        function saveState() {
+            try {
+                localStorage.setItem('tradingPlatformSaveData', JSON.stringify(tradingState));
+            } catch (e) {
+                console.error("Gagal menyimpan data trading:", e);
+            }
+        }
+
+        // --- Market & Analysis Engine ---
+        function updateMarketPrices() {
+            for (const cat in assetData) {
+                for (const id in assetData[cat]) {
+                    const asset = assetData[cat][id];
+                    const currentPrice = tradingState.marketPrices[cat][id];
+                    const change = (Math.random() - 0.5) * asset.basePrice * asset.volatility;
+                    let newPrice = currentPrice + change;
+                    newPrice = Math.max(newPrice, asset.basePrice * 0.1); 
+                    tradingState.marketPrices[cat][id] = newPrice;
+                    
+                    const history = tradingState.priceHistory[cat][id];
+                    history.push(newPrice);
+                    if (history.length > 100) history.shift();
+                }
+            }
+        }
+        
+        function calculateEMA(data, period) {
+            if (data.length < period) return null;
+            const k = 2 / (period + 1);
+            let ema = data.slice(0, period).reduce((a, b) => a + b, 0) / period;
+            for (let i = period; i < data.length; i++) {
+                ema = (data[i] * k) + (ema * (1 - k));
+            }
+            return ema;
+        }
+
+        function calculateAnalysis(history) {
+            const bbPeriod = 20, rsiPeriod = 14, macdShort = 12, macdLong = 26, macdSignal = 9;
+            if (history.length < macdLong) return { text: "Data Kurang", color: "bg-gray-700 text-gray-300" };
+            const bbSlice = history.slice(-bbPeriod);
+            const sma = bbSlice.reduce((a, b) => a + b, 0) / bbPeriod;
+            const stdDev = Math.sqrt(bbSlice.map(x => Math.pow(x - sma, 2)).reduce((a, b) => a + b, 0) / bbPeriod);
+            const upperBand = sma + (2 * stdDev), lowerBand = sma - (2 * stdDev);
+            let gains = 0, losses = 0;
+            for (let i = history.length - rsiPeriod; i < history.length - 1; i++) {
+                const diff = history[i+1] - history[i];
+                if (diff > 0) gains += diff; else losses -= diff;
+            }
+            const rs = (losses > 0) ? (gains / rsiPeriod) / (losses / rsiPeriod) : 100;
+            const rsi = 100 - (100 / (1 + rs));
+            const emaShort = calculateEMA(history, macdShort), emaLong = calculateEMA(history, macdLong);
+            const macdLine = emaShort - emaLong;
+            const macdHistory = [];
+            for (let i = macdLong; i <= history.length; i++) {
+                const hSlice = history.slice(0, i);
+                const eShort = calculateEMA(hSlice, macdShort), eLong = calculateEMA(hSlice, macdLong);
+                if (eShort !== null && eLong !== null) macdHistory.push(eShort - eLong);
+            }
+            const signalLine = calculateEMA(macdHistory, macdSignal);
+            const histogram = macdLine - signalLine, currentPrice = history[history.length - 1];
+            let text = `Netral (RSI: ${rsi.toFixed(1)})`, color = "bg-yellow-900/50 text-yellow-300";
+            if (rsi < 30 && currentPrice < lowerBand) { text = `Beli Kuat (RSI: ${rsi.toFixed(1)})`; color = "bg-green-800 text-green-200"; }
+            else if (rsi > 70 && currentPrice > upperBand) { text = `Jual Kuat (RSI: ${rsi.toFixed(1)})`; color = "bg-red-800 text-red-200"; }
+            else if (rsi < 40) { text = `Potensi Beli (RSI: ${rsi.toFixed(1)})`; color = "bg-green-900/50 text-green-300"; }
+            else if (rsi > 60) { text = `Potensi Jual (RSI: ${rsi.toFixed(1)})`; color = "bg-red-900/50 text-red-300"; }
+            return { text, color, rsi, upperBand, lowerBand, histogram, price: currentPrice };
+        }
+        
+        // --- UI & Rendering ---
+        function renderAssetList() {
+            const assets = assetData[activeAssetTab];
+            assetListEl.innerHTML = Object.keys(assets).map(id => {
+                const asset = assets[id];
+                const price = tradingState.marketPrices[activeAssetTab][id];
+                const history = tradingState.priceHistory[activeAssetTab][id];
+                const oldPrice = history[history.length - 2] || price;
+                const priceChange = price - oldPrice;
+                const color = priceChange >= 0 ? 'text-green-400' : 'text-red-400';
+                const formatter = asset.decimals !== undefined ? (p) => formatCurrency(p, asset.decimals) : formatCurrency;
+
+                return `
+                    <div class="asset-item cursor-pointer p-2 rounded-md hover:bg-gray-700 flex justify-between items-center" data-id="${id}" data-category="${activeAssetTab}">
+                        <div>
+                            <p class="font-bold">${id}</p>
+                            <p class="text-xs text-gray-400">${asset.name}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold ${color}">${formatter(price)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectAsset(category, id) {
+            selectedAsset = { category, id };
+            tradingViewPlaceholderEl.classList.add('hidden');
+            tradingViewEl.classList.remove('hidden');
+            updateTradingView();
+        }
+
+        function updateTradingView() {
+            if (!selectedAsset.id) return;
+            const { category, id } = selectedAsset;
+            const asset = assetData[category][id];
+            const price = tradingState.marketPrices[category][id];
+            const portfolioKey = `${category}_${id}`;
+            const owned = tradingState.portfolio[portfolioKey]?.quantity || 0;
+            
+            currentAssetNameEl.textContent = `${asset.name} (${id})`;
+            currentAssetPriceEl.textContent = formatCurrency(price, asset.decimals);
+            ownedQuantityEl.textContent = formatNumber(owned);
+            
+            const analysis = calculateAnalysis(tradingState.priceHistory[category][id]);
+            autoAnalysisSignalEl.textContent = analysis.text;
+            autoAnalysisSignalEl.className = `text-sm font-bold px-3 py-1 rounded-full text-center ${analysis.color}`;
+            
+            updateChart();
+            updateEstimates();
+        }
+
+        function updateChart() {
+            if (!selectedAsset.id) return;
+            const { category, id } = selectedAsset;
+            const history = tradingState.priceHistory[category][id];
+            const ctx = document.getElementById('asset-chart').getContext('2d');
+            
+            if (assetChart) {
+                assetChart.destroy();
+            }
+
+            if (history.length < 2) return;
+
+            // Generate simulated OHLC data and signals
+            const ohlcData = [];
+            const buySignals = [];
+            const sellSignals = [];
+
+            for (let i = 1; i < history.length; i++) {
+                const open = history[i - 1];
+                const close = history[i];
+                const high = Math.max(open, close) * (1 + Math.random() * 0.005);
+                const low = Math.min(open, close) * (1 - Math.random() * 0.005);
+                const timestamp = Date.now() - (history.length - i) * 60000; // Simulate 1-minute intervals
+
+                ohlcData.push({ x: timestamp, o: open, h: high, l: low, c: close });
+
+                // Check for signals, starting from a point where there's enough history
+                if (i >= 26) { // Minimum length for MACD
+                    const analysisHistory = history.slice(0, i + 1);
+                    const analysis = calculateAnalysis(analysisHistory);
+                    if (analysis.text.startsWith('Beli Kuat')) {
+                        buySignals.push({ x: timestamp, y: low * 0.995 }); // Position below the low
+                    } else if (analysis.text.startsWith('Jual Kuat')) {
+                        sellSignals.push({ x: timestamp, y: high * 1.005 }); // Position above the high
+                    }
+                }
+            }
+            
+            assetChart = new Chart(ctx, {
+                type: 'candlestick',
+                data: {
+                    datasets: [{
+                        label: `Harga ${id}`,
+                        data: ohlcData,
+                        color: {
+                            up: 'rgba(74, 222, 128, 1)',
+                            down: 'rgba(248, 113, 113, 1)',
+                            unchanged: 'rgba(156, 163, 175, 1)',
+                        }
+                    }, {
+                        type: 'scatter',
+                        label: 'Sinyal Beli',
+                        data: buySignals,
+                        backgroundColor: 'rgba(74, 222, 128, 1)',
+                        pointStyle: 'triangle',
+                        radius: 6,
+                    }, {
+                        type: 'scatter',
+                        label: 'Sinyal Jual',
+                        data: sellSignals,
+                        backgroundColor: 'rgba(248, 113, 113, 1)',
+                        pointStyle: 'triangle',
+                        rotation: 180,
+                        radius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: false,
+                            adapters: { date: { locale: 'id' } },
+                        },
+                        y: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+        
+        function updateEstimates() {
+            if (!selectedAsset.id) return;
+            const { category, id } = selectedAsset;
+            const currentPrice = tradingState.marketPrices[category][id];
+            
+            const buyPrice = activeTradeType.buy === 'limit' ? (parseFloat(buyLimitPriceInput.value) || 0) : currentPrice;
+            const buyQty = parseFloat(buyQuantityInput.value) || 0;
+            buyEstimateEl.textContent = formatCurrency(buyQty * buyPrice);
+
+            const sellPrice = activeTradeType.sell === 'limit' ? (parseFloat(sellLimitPriceInput.value) || 0) : currentPrice;
+            const sellQty = parseFloat(sellQuantityInput.value) || 0;
+            sellEstimateEl.textContent = formatCurrency(sellQty * sellPrice);
+        }
+
+        function renderPortfolio() {
+            const keys = Object.keys(tradingState.portfolio);
+            if(keys.length === 0) {
+                portfolioListEl.innerHTML = `<p class="text-gray-500">Anda belum memiliki aset.</p>`;
+                return;
+            }
+            portfolioListEl.innerHTML = keys.map(key => {
+                const [category, id] = key.split('_');
+                const holdings = tradingState.portfolio[key];
+                const asset = assetData[category]?.[id];
+                if (!asset) return '';
+                const currentPrice = tradingState.marketPrices[category]?.[id];
+                if (currentPrice === undefined) return '';
+                const currentValue = holdings.quantity * currentPrice;
+                const pnl = currentValue - holdings.totalCost;
+                const pnlColor = pnl >= 0 ? 'text-green-400' : 'text-red-400';
+                return `
+                <div class="flex justify-between items-center text-sm py-1 border-b border-gray-700">
+                    <div>
+                        <p class="font-bold">${id}</p>
+                        <p class="text-xs text-gray-400">Qty: ${formatNumber(holdings.quantity)}</p>
+                    </div>
+                    <div class="text-right">
+                        <p>${formatCurrency(currentValue, asset.decimals)}</p>
+                        <p class="${pnlColor}">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl, asset.decimals)}</p>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderActiveOrders() {
+            if (tradingState.limitOrders.length === 0) {
+                activeOrdersListEl.innerHTML = `<p class="text-gray-500">Tidak ada order limit yang aktif.</p>`;
+                return;
+            }
+            activeOrdersListEl.innerHTML = tradingState.limitOrders.map(order => {
+                const [category, id] = order.assetKey.split('_');
+                const asset = assetData[category]?.[id];
+                if (!asset) return '';
+                const isBuy = order.type === 'buy';
+                const color = isBuy ? 'text-green-400' : 'text-red-400';
+                return `
+                <div class="bg-gray-800 p-2 rounded-md flex justify-between items-center text-sm">
+                    <div>
+                        <p class="font-bold ${color}">${isBuy ? 'BELI' : 'JUAL'} ${id}</p>
+                        <p class="text-xs text-gray-400">Qty: ${formatNumber(order.quantity)} @ ${formatCurrency(order.limitPrice, asset.decimals)}</p>
+                    </div>
+                    <button class="cancel-order-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded text-xs" data-order-id="${order.id}">Batalkan</button>
+                </div>`;
+            }).join('');
+        }
+
+        function renderTransactionLog() {
+            if (tradingState.transactionLog.length === 0) {
+                transactionLogListEl.innerHTML = `<p class="text-gray-500 text-center">Belum ada transaksi yang tercatat.</p>`;
+                return;
+            }
+            transactionLogListEl.innerHTML = [...tradingState.transactionLog].reverse().map(log => {
+                const [category, id] = log.assetKey.split('_');
+                const asset = assetData[category]?.[id];
+                if (!asset) return '';
+
+                if (log.type === 'buy') {
+                    return `
+                    <div class="bg-gray-900/50 p-3 rounded-lg text-sm flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-green-400">BELI ${id}</p>
+                            <p class="text-xs text-gray-400">Qty: ${formatNumber(log.quantity)} @ ${formatCurrency(log.price, asset.decimals)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold">${formatCurrency(log.totalCost, asset.decimals)}</p>
+                        </div>
+                    </div>
+                    `;
+                } else { // sell
+                    const pnlColor = log.pnl >= 0 ? 'text-green-400' : 'text-red-400';
+                    return `
+                     <div class="bg-gray-900/50 p-3 rounded-lg text-sm flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-red-400">JUAL ${id}</p>
+                            <p class="text-xs text-gray-400">Qty: ${formatNumber(log.quantity)} @ ${formatCurrency(log.price, asset.decimals)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold">${formatCurrency(log.totalValue, asset.decimals)}</p>
+                            <p class="text-xs ${pnlColor}">${log.pnl >= 0 ? '+' : ''}${formatCurrency(log.pnl, asset.decimals)} (${log.pnlPercent.toFixed(2)}%)</p>
+                        </div>
+                    </div>
+                    `;
+                }
+            }).join('');
+        }
+        
+        // --- Trading Logic ---
+        function addTransactionToLog(logData) {
+            tradingState.transactionLog.push({ id: Date.now(), ...logData });
+        }
+
+        function handleTrade(type) {
+            if (!selectedAsset.id) return;
+            const tradeType = activeTradeType[type];
+            if (tradeType === 'market') {
+                executeMarketOrder(type);
+            } else {
+                const { category, id } = selectedAsset;
+                const portfolioKey = `${category}_${id}`;
+                const quantityInput = type === 'buy' ? buyQuantityInput : sellQuantityInput;
+                const limitPriceInput = type === 'buy' ? buyLimitPriceInput : sellLimitPriceInput;
+                const quantity = parseFloat(quantityInput.value);
+                const limitPrice = parseFloat(limitPriceInput.value);
+                
+                if (placeLimitOrder(type, portfolioKey, quantity, limitPrice)) {
+                    quantityInput.value = '';
+                    limitPriceInput.value = '';
+                    updateAllUI();
+                    saveState();
+                }
+            }
+        }
+        
+        function executeMarketOrder(type) {
+            const { category, id } = selectedAsset;
+            const price = tradingState.marketPrices[category][id];
+            const portfolioKey = `${category}_${id}`;
+            const quantityInput = type === 'buy' ? buyQuantityInput : sellQuantityInput;
+            const quantity = parseFloat(quantityInput.value);
+
+            if (isNaN(quantity) || quantity <= 0) return;
+            
+            let fee = (quantity * price) * 0.001;
+            if (tradingState.upgrades.feeDiscount) {
+                fee *= 0.5;
+            }
+
+            if (type === 'buy') {
+                const cost = quantity * price + fee;
+                if (tradingState.balance >= cost) {
+                    tradingState.balance -= cost;
+                    const existing = tradingState.portfolio[portfolioKey] || { quantity: 0, totalCost: 0 };
+                    existing.quantity += quantity;
+                    existing.totalCost += quantity * price; // Cost without fee
+                    tradingState.portfolio[portfolioKey] = existing;
+                    addTransactionToLog({ type: 'buy', assetKey: portfolioKey, quantity, price, totalCost: quantity * price });
+                }
+            } else { // sell
+                const existing = tradingState.portfolio[portfolioKey];
+                if (existing && existing.quantity >= quantity) {
+                    const proceeds = (quantity * price) - fee;
+                    const avgPrice = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0;
+                    const costOfSoldPortion = quantity * avgPrice;
+                    const pnl = (quantity * price) - costOfSoldPortion;
+                    const pnlPercent = costOfSoldPortion > 0 ? (pnl / costOfSoldPortion) * 100 : 0;
+
+                    tradingState.balance += proceeds;
+                    existing.totalCost -= costOfSoldPortion;
+                    existing.quantity -= quantity;
+
+                    addTransactionToLog({ type: 'sell', assetKey: portfolioKey, quantity, price, totalValue: quantity * price, pnl, pnlPercent });
+
+                    if (existing.quantity < 1e-9) delete tradingState.portfolio[portfolioKey];
+                }
+            }
+            quantityInput.value = '';
+            updateAllUI();
+            saveState();
+        }
+
+        function placeLimitOrder(type, assetKey, quantity, limitPrice) {
+            if (isNaN(quantity) || quantity <= 0 || isNaN(limitPrice) || limitPrice <= 0) return false;
+
+            if (type === 'buy') {
+                const totalCost = quantity * limitPrice;
+                if (tradingState.balance >= totalCost) {
+                    tradingState.balance -= totalCost;
+                    const newOrder = { id: Date.now(), assetKey, type, quantity, limitPrice, reservedCash: totalCost };
+                    tradingState.limitOrders.push(newOrder);
+                    return true;
+                }
+            } else { // sell
+                const existing = tradingState.portfolio[assetKey];
+                if (existing && existing.quantity >= quantity) {
+                    existing.quantity -= quantity;
+                    if (existing.quantity < 1e-9) delete tradingState.portfolio[assetKey];
+                    const newOrder = { id: Date.now(), assetKey, type, quantity, limitPrice, reservedAsset: quantity };
+                    tradingState.limitOrders.push(newOrder);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function checkLimitOrders() {
+            const executedOrderIds = new Set();
+            for (const order of tradingState.limitOrders) {
+                const [category, id] = order.assetKey.split('_');
+                const currentPrice = tradingState.marketPrices[category][id];
+
+                if (order.type === 'buy' && currentPrice <= order.limitPrice) {
+                    const price = order.limitPrice; // Execute at limit price
+                    const existing = tradingState.portfolio[order.assetKey] || { quantity: 0, totalCost: 0 };
+                    existing.quantity += order.quantity;
+                    existing.totalCost += order.quantity * price; 
+                    tradingState.portfolio[order.assetKey] = existing;
+                    const actualCost = order.quantity * price;
+                    tradingState.balance += (order.reservedCash - actualCost); 
+                    addTransactionToLog({ type: 'buy', assetKey: order.assetKey, quantity: order.quantity, price, totalCost: actualCost });
+                    executedOrderIds.add(order.id);
+                } else if (order.type === 'sell' && currentPrice >= order.limitPrice) {
+                    const price = order.limitPrice; // Execute at limit price
+                    const proceeds = order.quantity * price;
+                    const avgPrice = (tradingState.portfolio[order.assetKey]?.totalCost || 0) / (tradingState.portfolio[order.assetKey]?.quantity || 1); // Get avg price before this sale
+                    const costOfSoldPortion = order.reservedAsset * avgPrice;
+                    const pnl = proceeds - costOfSoldPortion;
+                    const pnlPercent = costOfSoldPortion > 0 ? (pnl / costOfSoldPortion) * 100 : 0;
+                    
+                    tradingState.balance += proceeds;
+                    
+                    addTransactionToLog({ type: 'sell', assetKey: order.assetKey, quantity: order.quantity, price, totalValue: proceeds, pnl, pnlPercent });
+                    executedOrderIds.add(order.id);
+                }
+            }
+
+            if (executedOrderIds.size > 0) {
+                tradingState.limitOrders = tradingState.limitOrders.filter(o => !executedOrderIds.has(o.id));
+                updateAllUI();
+                saveState();
+            }
+        }
+        
+        function cancelLimitOrder(orderId) {
+            const orderIndex = tradingState.limitOrders.findIndex(o => o.id === orderId);
+            if (orderIndex === -1) return;
+            
+            const order = tradingState.limitOrders[orderIndex];
+            if (order.type === 'buy') {
+                tradingState.balance += order.reservedCash;
+            } else { // sell
+                const existing = tradingState.portfolio[order.assetKey] || { quantity: 0, totalCost: 0 };
+                existing.quantity += order.reservedAsset;
+                tradingState.portfolio[order.assetKey] = existing;
+            }
+            
+            tradingState.limitOrders.splice(orderIndex, 1);
+            updateAllUI();
+            saveState();
+        }
+
+        // --- Global UI & Game Loop ---
+        function updateAllUI() {
+            const portfolioVal = Object.keys(tradingState.portfolio).reduce((sum, key) => {
+                const [category, id] = key.split('_');
+                const holdings = tradingState.portfolio[key];
+                const currentPrice = tradingState.marketPrices[category]?.[id];
+                return sum + (holdings.quantity * (currentPrice || 0));
+            }, 0);
+            balanceEl.textContent = formatCurrency(tradingState.balance);
+            portfolioValueEl.textContent = formatCurrency(portfolioVal);
+            renderAssetList();
+            renderPortfolio();
+            renderActiveOrders();
+            renderTransactionLog();
+            if(selectedAsset.id) updateTradingView();
+        }
+
+        function gameLoop() {
+            updateMarketPrices();
+            checkLimitOrders();
+            updateAllUI();
+        }
+        
+        function handleAmountSelection(type, percentage) {
+            if(!selectedAsset.id) return;
+            const { category, id } = selectedAsset;
+            const price = tradingState.marketPrices[category][id];
+            
+            if(type === 'buy') {
+                const maxBuyable = price > 0 ? tradingState.balance / price : 0;
+                const quantity = maxBuyable * percentage;
+                buyQuantityInput.value = quantity;
+            } else if (type === 'sell') {
+                const portfolioKey = `${category}_${id}`;
+                const owned = tradingState.portfolio[portfolioKey]?.quantity || 0;
+                const quantity = owned * percentage;
+                sellQuantityInput.value = quantity;
+            }
+            updateEstimates();
+        }
+
+        // --- Event Listeners ---
+        document.querySelector('.container').addEventListener('click', (e) => {
+            const assetItem = e.target.closest('.asset-item');
+            if (assetItem) {
+                selectAsset(assetItem.dataset.category, assetItem.dataset.id);
+                return;
+            }
+            const assetTab = e.target.closest('.asset-tab-button');
+             if (assetTab) {
+                activeAssetTab = assetTab.dataset.tab;
+                document.querySelectorAll('.asset-tab-button').forEach(btn => {
+                    btn.classList.remove('border-purple-500', 'bg-gray-700');
+                    btn.classList.add('border-transparent');
+                });
+                assetTab.classList.add('border-purple-500', 'bg-gray-700');
+                assetTab.classList.remove('border-transparent');
+                renderAssetList();
+                return;
+            }
+            
+            const amountBtn = e.target.closest('.amount-btn');
+            if(amountBtn) {
+                const { type, value } = amountBtn.dataset;
+                handleAmountSelection(type, parseFloat(value));
+                return;
+            }
+
+            const cancelOrderBtn = e.target.closest('.cancel-order-btn');
+            if(cancelOrderBtn) {
+                cancelLimitOrder(parseInt(cancelOrderBtn.dataset.orderId));
+                return;
+            }
+        });
+        
+        document.querySelectorAll('.trade-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const { panel, type } = btn.dataset;
+                activeTradeType[panel] = type;
+                
+                btn.parentElement.querySelectorAll('.trade-type-btn').forEach(b => b.classList.remove('trade-tab-active'));
+                btn.classList.add('trade-tab-active');
+
+                const isLimit = type === 'limit';
+                const limitGroup = panel === 'buy' ? buyLimitPriceGroup : sellLimitPriceGroup;
+                const typeLabel = panel === 'buy' ? buyTypeLabel : sellTypeLabel;
+                const actionButton = panel === 'buy' ? buyButton : sellButton;
+                
+                if (panel === 'buy') {
+                    const buyLabelText = document.getElementById('buy-quantity-label-text');
+                    buyLabelText.textContent = isLimit ? 'Nominal' : 'Jumlah';
+                } else if (panel === 'sell') {
+                    const sellLabelText = document.getElementById('sell-quantity-label-text');
+                    sellLabelText.textContent = isLimit ? 'Nominal' : 'Jumlah';
+                }
+
+                limitGroup.classList.toggle('hidden', !isLimit);
+                typeLabel.textContent = isLimit ? 'Limit' : 'Market';
+                actionButton.textContent = isLimit ? `Pasang Order ${panel === 'buy' ? 'Beli' : 'Jual'}` : `${panel === 'buy' ? 'Beli' : 'Jual'}`;
+                updateEstimates();
+            });
+        });
+        
+        buyQuantityInput.addEventListener('input', updateEstimates);
+        sellQuantityInput.addEventListener('input', updateEstimates);
+        buyLimitPriceInput.addEventListener('input', updateEstimates);
+        sellLimitPriceInput.addEventListener('input', updateEstimates);
+        buyButton.addEventListener('click', () => handleTrade('buy'));
+        sellButton.addEventListener('click', () => handleTrade('sell'));
+        
+        document.getElementById('withdraw-button').addEventListener('click', () => {
+            const amountInput = document.getElementById('withdraw-amount');
+            const amount = parseFloat(amountInput.value);
+            if(isNaN(amount) || amount <= 0 || tradingState.balance < amount) {
+                alert('Jumlah penarikan tidak valid atau saldo tidak mencukupi.');
+                return;
+            }
+        
+            tradingState.balance -= amount;
+            
+            // Communicate withdrawal to Idle Tycoon Game
+            const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
+            localStorage.setItem('tycoonWithdrawal', tycoonWithdrawal + amount);
+        
+            alert(`Dana sebesar ${formatCurrency(amount)} berhasil ditarik dan akan dikembalikan ke Idle Tycoon.`);
+            
+            saveState();
+            updateAllUI();
+            amountInput.value = '';
+        });
+
+        document.getElementById('withdraw-max-button').addEventListener('click', () => {
+             document.getElementById('withdraw-amount').value = tradingState.balance;
+        });
+
+        // --- Initialization ---
+        loadState();
+        updateAllUI();
+        setInterval(gameLoop, 1000); 
+        setInterval(saveState, 5000);
+    </script>
+</body>
+</html>
+
