@@ -68,7 +68,8 @@
             nextSessionTime: 0,
             isSessionActive: false,
             auctionQueue: [],
-            currentItem: null
+            currentItem: null,
+            lastResult: null // Untuk menampilkan hasil lelang terakhir
         };
 
         const availableItems = {
@@ -159,8 +160,6 @@
                 highestBidder: 'Belum ada',
                 endTime: Date.now() + ITEM_DURATION
             };
-            
-            renderAll();
         }
         
         function endCurrentItemAuction() {
@@ -179,22 +178,33 @@
                  showToast(`${item.name} tidak terjual.`, 'info');
             }
             
+            auctionState.lastResult = {
+                name: item.name,
+                icon: item.icon,
+                winner: item.highestBidder,
+                winningBid: item.currentBid
+            };
+
             auctionState.currentItem = null;
             saveState();
 
-            if (auctionState.auctionQueue.length > 0) {
-                setTimeout(startNextItemAuction, 3000);
-            } else {
-                endAuctionSession();
-            }
+            const nextAction = auctionState.auctionQueue.length > 0 
+                ? startNextItemAuction 
+                : endAuctionSession;
+
+            setTimeout(() => {
+                auctionState.lastResult = null;
+                nextAction();
+            }, 4000); // Jeda 4 detik untuk menampilkan hasil
         }
 
         function endAuctionSession() {
             auctionState.isSessionActive = false;
             auctionState.currentItem = null;
             auctionState.nextSessionTime = Date.now() + AUCTION_INTERVAL;
-            showToast("Sesi lelang berakhir. Sesi berikutnya dalam 5 menit.", 'info');
-            renderAll();
+            if (!auctionState.lastResult) {
+                showToast("Sesi lelang berakhir. Sesi berikutnya dalam 5 menit.", 'info');
+            }
         }
 
         function renderStatus() {
@@ -215,6 +225,8 @@
                              <span>${auctionState.currentItem.name}</span>
                         </div>
                     </div>`;
+                } else if (auctionState.lastResult) {
+                    currentItemStatusHTML = '<p>Menampilkan hasil lelang...</p>';
                 } else if (auctionState.auctionQueue.length > 0) {
                     currentItemStatusHTML = '<p>Mempersiapkan barang berikutnya...</p>';
                 }
@@ -263,15 +275,30 @@
         function renderItemDetail() {
             const detailViewEl = document.getElementById('detail-view');
             const item = auctionState.currentItem;
+            const lastResult = auctionState.lastResult;
+
+            if (lastResult) {
+                const winnerText = lastResult.winner === 'Anda' 
+                    ? `<span class="font-bold text-green-400">Anda!</span>` 
+                    : `<span class="font-bold text-red-400">${lastResult.winner}</span>`;
+                
+                const resultMessage = lastResult.winner !== 'Belum ada'
+                    ? `<h3 class="text-3xl font-bold">Pemenang: ${winnerText}</h3>
+                       <p class="text-lg">dengan tawaran <span class="font-bold text-yellow-400">${formatCurrency(lastResult.winningBid)}</span></p>`
+                    : `<h3 class="text-3xl font-bold text-gray-400">Tidak Terjual</h3>`;
+
+                detailViewEl.innerHTML = `
+                    <div class="text-center h-full flex flex-col justify-center items-center">
+                        <p class="text-gray-400 text-xl mb-2">Lelang untuk ${lastResult.name} ${lastResult.icon} telah berakhir!</p>
+                        ${resultMessage}
+                        <p class="text-gray-500 mt-8">Mempersiapkan lelang berikutnya...</p>
+                        <div class="w-10 h-10 border-4 border-dashed rounded-full animate-spin border-purple-400 mt-2"></div>
+                    </div>`;
+                return;
+            }
 
             if (!item) {
-                if (auctionState.isSessionActive) {
-                    // Sesi aktif, tapi sedang di antara item
-                    detailViewEl.innerHTML = `<div class="text-center h-full flex flex-col justify-center items-center"><p class="text-gray-500 text-2xl">Mempersiapkan barang lelang berikutnya...</p><div class="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-purple-400 mt-4"></div></div>`;
-                } else {
-                    // Tidak ada sesi aktif, menunggu sesi berikutnya
-                    detailViewEl.innerHTML = `<div class="text-center h-full flex flex-col justify-center items-center"><p class="text-gray-500 text-2xl">Menunggu sesi lelang berikutnya...</p><p class="text-5xl mt-4 font-mono countdown-timer">${formatDuration(auctionState.nextSessionTime - Date.now())}</p></div>`;
-                }
+                detailViewEl.innerHTML = `<div class="text-center h-full flex flex-col justify-center items-center"><p class="text-gray-500 text-2xl">Menunggu sesi lelang berikutnya...</p><p class="text-5xl mt-4 font-mono countdown-timer">${formatDuration(auctionState.nextSessionTime - Date.now())}</p></div>`;
                 return;
             }
 
@@ -351,7 +378,6 @@
             item.highestBidder = 'Anda';
             
             saveState();
-            renderAll();
         }
 
         function gameLoop() {
@@ -392,6 +418,4 @@
     </script>
 </body>
 </html>
-
-
 
