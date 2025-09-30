@@ -147,8 +147,14 @@
             auctionState.currentItem = null;
             saveState();
 
-            // Start next item after a short delay
-            setTimeout(startNextItemAuction, 3000);
+            // Check if there are more items in the queue
+            if (auctionState.auctionQueue.length > 0) {
+                // Start next item after a short delay
+                setTimeout(startNextItemAuction, 3000);
+            } else {
+                // If no more items, end the session immediately
+                endAuctionSession();
+            }
         }
 
         function endAuctionSession() {
@@ -319,4 +325,5 @@
     </script>
 </body>
 </html>
+
 
