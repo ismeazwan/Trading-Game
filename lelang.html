@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Lelang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Inter', sans-serif; } 
+        .timer-ended { color: #ef4444; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4 max-w-7xl">
+        <header class="bg-gray-800 p-4 rounded-lg mb-4 flex justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold text-purple-400">Platform Lelang</h1>
+                <a href="index.html" class="text-sm text-yellow-400 hover:underline">&larr; Kembali ke Idle Tycoon</a>
+            </div>
+            <div id="balance-container" class="text-right">
+                <p class="text-sm text-gray-400">Saldo Lelang Anda</p>
+                <p id="balance" class="text-2xl font-bold text-green-400">Rp 0</p>
+            </div>
+        </header>
+        <div id="main-content" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+             <div class="lg:col-span-1 bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-2">Status Lelang</h2>
+                <div id="auction-status" class="space-y-2">
+                    <!-- Status lelang akan di-render di sini -->
+                </div>
+            </div>
+            <div id="detail-view" class="lg:col-span-2 bg-gray-800 p-4 rounded-lg shadow-lg">
+                <!-- Tampilan detail lelang akan di-render di sini -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const AUCTION_INTERVAL = 5 * 60 * 1000; // 5 menit
+        const ITEM_DURATION = 1 * 60 * 1000;   // 1 menit
+
+        let auctionState = {
+            balance: 0,
+            inventory: {},
+            nextSessionTime: 0,
+            isSessionActive: false,
+            auctionQueue: [],
+            currentItem: null
+        };
+
+        const availableItems = {
+            ITEM001: { name: "Lukisan Antik 'Senja'", basePrice: 15000000, icon: '🖼️' },
+            ITEM002: { name: "Mobil Klasik 'Mustang 68'", basePrice: 500000000, icon: '🚗' },
+            ITEM003: { name: "Jam Tangan 'Rolex Submariner'", basePrice: 250000000, icon: '⌚' },
+            ITEM004: { name: "Gitar Elektrik 'Fender Stratocaster'", basePrice: 45000000, icon: '🎸' },
+            ITEM005: { name: "Batu Permata Langka", basePrice: 80000000, icon: '💎' },
+            ITEM006: { name: "Koin Emas Kuno", basePrice: 30000000, icon: '🪙' }
+        };
+
+        function formatCurrency(num) {
+             return `Rp ${Math.floor(num).toLocaleString('id-ID')}`;
+        }
+
+        function formatDuration(ms) {
+            if (ms <= 0) return `<span class="timer-ended font-bold">00:00</span>`;
+            const totalSeconds = Math.floor(ms / 1000);
+            const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+        
+        function loadState(){
+            const savedData = localStorage.getItem('auctionPlatformData');
+            if (savedData) {
+                auctionState = { ...auctionState, ...JSON.parse(savedData) };
+            }
+            const exchangeData = JSON.parse(localStorage.getItem('stockExchangeData'));
+            if (exchangeData && exchangeData.balance) {
+                auctionState.balance = exchangeData.balance;
+            }
+            if (auctionState.nextSessionTime === 0 || auctionState.nextSessionTime < Date.now()) {
+                 auctionState.nextSessionTime = Date.now() + AUCTION_INTERVAL;
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('auctionPlatformData', JSON.stringify(auctionState));
+            const exchangeData = JSON.parse(localStorage.getItem('stockExchangeData')) || {};
+            exchangeData.balance = auctionState.balance;
+            localStorage.setItem('stockExchangeData', JSON.stringify(exchangeData));
+        }
+
+        function startAuctionSession() {
+            auctionState.isSessionActive = true;
+            
+            const itemIds = Object.keys(availableItems);
+            // Shuffle item IDs
+            for (let i = itemIds.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [itemIds[i], itemIds[j]] = [itemIds[j], itemIds[i]];
+            }
+            
+            const itemsToAuctionCount = 2 + Math.floor(Math.random() * 2); // Lelang 2 atau 3 item
+            auctionState.auctionQueue = itemIds.slice(0, itemsToAuctionCount);
+            
+            startNextItemAuction();
+        }
+
+        function startNextItemAuction() {
+            if (auctionState.auctionQueue.length === 0) {
+                endAuctionSession();
+                return;
+            }
+            
+            const itemId = auctionState.auctionQueue.shift();
+            const itemInfo = availableItems[itemId];
+            
+            auctionState.currentItem = {
+                id: itemId,
+                ...itemInfo,
+                currentBid: itemInfo.basePrice,
+                highestBidder: 'Belum ada',
+                endTime: Date.now() + ITEM_DURATION
+            };
+            
+            renderAll();
+        }
+        
+        function endCurrentItemAuction() {
+            const item = auctionState.currentItem;
+            if (!item) return;
+
+            if (item.highestBidder === 'Anda') {
+                const inventoryItem = auctionState.inventory[item.id] || { ...item, quantity: 0, value: 0 };
+                inventoryItem.quantity += 1;
+                inventoryItem.value = item.currentBid;
+                auctionState.inventory[item.id] = inventoryItem;
+                alert(`Selamat! Anda memenangkan lelang untuk ${item.name}!`);
+            } else if (item.highestBidder !== 'Belum ada') {
+                 // Simulate NPC winning
+                 alert(`${item.name} telah dimenangkan oleh penawar lain.`);
+            } else {
+                 alert(`${item.name} tidak terjual karena tidak ada penawaran.`);
+            }
+            
+            auctionState.currentItem = null;
+            saveState();
+
+            // Start next item after a short delay
+            setTimeout(startNextItemAuction, 3000);
+        }
+
+        function endAuctionSession() {
+            auctionState.isSessionActive = false;
+            auctionState.currentItem = null;
+            auctionState.nextSessionTime = Date.now() + AUCTION_INTERVAL;
+            alert("Sesi lelang saat ini telah berakhir. Sesi berikutnya akan dimulai dalam 5 menit.");
+            renderAll();
+        }
+
+        function renderStatus() {
+            const statusEl = document.getElementById('auction-status');
+            if (auctionState.isSessionActive) {
+                let queueHTML = auctionState.auctionQueue.map(id => {
+                    const item = availableItems[id];
+                    return `<div class="p-2 bg-gray-700 rounded-md flex items-center"><span class="text-xl mr-2">${item.icon}</span><span class="text-sm">${item.name}</span></div>`;
+                }).join('');
+
+                statusEl.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-lg text-green-400">Sesi Lelang Aktif</h3>
+                    </div>
+                    ${auctionState.currentItem ? `
+                    <div>
+                        <p class="text-sm text-gray-400">Sedang Dilelang:</p>
+                        <div class="p-2 bg-purple-900/50 border border-purple-500 rounded-md flex items-center">
+                             <span class="text-xl mr-2">${auctionState.currentItem.icon}</span>
+                             <span>${auctionState.currentItem.name}</span>
+                        </div>
+                    </div>` : '<p>Mempersiapkan barang berikutnya...</p>'}
+                    ${auctionState.auctionQueue.length > 0 ? `
+                    <div>
+                        <p class="text-sm text-gray-400 mt-4">Berikutnya:</p>
+                        <div class="space-y-1">${queueHTML}</div>
+                    </div>` : ''}
+                `;
+            } else {
+                const remainingTime = auctionState.nextSessionTime - Date.now();
+                statusEl.innerHTML = `
+                    <h3 class="font-bold text-lg text-yellow-400">Lelang Berikutnya Dalam:</h3>
+                    <p class="text-4xl font-mono countdown-timer">${formatDuration(remainingTime)}</p>
+                `;
+            }
+        }
+
+        function renderItemDetail() {
+            const detailViewEl = document.getElementById('detail-view');
+            const item = auctionState.currentItem;
+
+            if (!item) {
+                detailViewEl.innerHTML = `<div class="text-center h-full flex flex-col justify-center items-center"><p class="text-gray-500 text-2xl">Menunggu sesi lelang berikutnya...</p><p class="text-5xl mt-4 font-mono countdown-timer">${formatDuration(auctionState.nextSessionTime - Date.now())}</p></div>`;
+                return;
+            }
+
+            const remainingMs = item.endTime - Date.now();
+            const isHighestBidder = item.highestBidder === 'Anda';
+            const canAffordNextBid = auctionState.balance > item.currentBid;
+
+            detailViewEl.innerHTML = `
+                <div class="flex items-center mb-4">
+                    <span class="text-6xl mr-4">${item.icon}</span>
+                    <div>
+                        <h2 class="text-3xl font-bold">${item.name}</h2>
+                        <p class="text-lg text-gray-400">Waktu Tersisa: <span class="font-mono item-timer font-bold text-2xl">${formatDuration(remainingMs)}</span></p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="font-bold text-xl mb-2">Status Lelang</h3>
+                    <p>Tawaran tertinggi: <span class="font-bold text-2xl text-yellow-400">${formatCurrency(item.currentBid)}</span></p>
+                    <p>Penawar tertinggi: <span class="font-bold ${isHighestBidder ? 'text-green-400' : ''}">${item.highestBidder}</span></p>
+                    
+                    <div class="mt-4">
+                        <label for="bid-amount" class="block text-sm font-medium text-gray-300">Jumlah Tawaran Anda:</label>
+                        <input type="number" id="bid-amount" class="w-full bg-gray-800 p-2 rounded mt-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="${formatCurrency(item.currentBid * 1.05)}">
+                        <button id="place-bid-btn" class="w-full mt-2 font-bold py-3 px-4 rounded transition-colors ${!canAffordNextBid || remainingMs <= 0 ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}" ${!canAffordNextBid || remainingMs <= 0 ? 'disabled' : ''}>
+                            ${remainingMs > 0 ? 'Ajukan Tawaran' : 'Lelang Berakhir'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function handleBid() {
+            const item = auctionState.currentItem;
+            if (!item) return;
+
+            const bidInput = document.getElementById('bid-amount');
+            const bidAmount = parseFloat(bidInput.value);
+
+            if (isNaN(bidAmount)) { alert("Masukkan jumlah tawaran yang valid."); return; }
+            if (bidAmount <= item.currentBid) { alert("Tawaran Anda harus lebih tinggi dari tawaran saat ini."); return; }
+            if (auctionState.balance < bidAmount) { alert("Saldo Anda tidak cukup untuk mengajukan tawaran ini."); return; }
+
+            if (item.highestBidder === 'Anda') {
+                auctionState.balance += item.currentBid;
+            }
+
+            auctionState.balance -= bidAmount;
+            item.currentBid = bidAmount;
+            item.highestBidder = 'Anda';
+            
+            saveState();
+            renderAll();
+        }
+
+        function gameLoop() {
+            const now = Date.now();
+            if (!auctionState.isSessionActive && now >= auctionState.nextSessionTime) {
+                startAuctionSession();
+            }
+
+            if(auctionState.isSessionActive && auctionState.currentItem && now >= auctionState.currentItem.endTime) {
+                endCurrentItemAuction();
+            }
+            renderAll();
+        }
+
+        function renderAll(){
+            document.getElementById('balance').textContent = formatCurrency(auctionState.balance);
+            renderStatus();
+            renderItemDetail();
+        }
+
+        document.getElementById('main-content').addEventListener('click', (e) => {
+            if (e.target.id === 'place-bid-btn') {
+                handleBid();
+            }
+        });
+
+        window.addEventListener('focus', loadState);
+        
+        loadState();
+        setInterval(gameLoop, 1000);
+        setInterval(saveState, 5000);
+    </script>
+</body>
+</html>
+
