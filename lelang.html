@@ -173,18 +173,27 @@
                     return `<div class="p-2 bg-gray-700 rounded-md flex items-center"><span class="text-xl mr-2">${item.icon}</span><span class="text-sm">${item.name}</span></div>`;
                 }).join('');
 
-                statusEl.innerHTML = `
-                    <div>
-                        <h3 class="font-bold text-lg text-green-400">Sesi Lelang Aktif</h3>
-                    </div>
-                    ${auctionState.currentItem ? `
+                let currentItemStatusHTML = '';
+                if (auctionState.currentItem) {
+                    currentItemStatusHTML = `
                     <div>
                         <p class="text-sm text-gray-400">Sedang Dilelang:</p>
                         <div class="p-2 bg-purple-900/50 border border-purple-500 rounded-md flex items-center">
                              <span class="text-xl mr-2">${auctionState.currentItem.icon}</span>
                              <span>${auctionState.currentItem.name}</span>
                         </div>
-                    </div>` : '<p>Mempersiapkan barang berikutnya...</p>'}
+                    </div>`;
+                } else if (auctionState.auctionQueue.length > 0) {
+                    currentItemStatusHTML = '<p>Mempersiapkan barang berikutnya...</p>';
+                } else {
+                    currentItemStatusHTML = '<p>Menyelesaikan sesi lelang...</p>';
+                }
+
+                statusEl.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-lg text-green-400">Sesi Lelang Aktif</h3>
+                    </div>
+                    ${currentItemStatusHTML}
                     ${auctionState.auctionQueue.length > 0 ? `
                     <div>
                         <p class="text-sm text-gray-400 mt-4">Berikutnya:</p>
@@ -325,5 +334,4 @@
     </script>
 </body>
 </html>
-
 
