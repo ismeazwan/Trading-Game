@@ -1,606 +1,526 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Trading Game — Final Edition (Fixed)</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-
-  <style>
-    :root {
-        --bg-color: #f4f7f9;
-        --card-bg-color: #ffffff;
-        --text-color: #333;
-        --header-color: #2c3e50;
-        --border-color: #e0e0e0;
-        --input-bg-color: #fff;
-        --input-border-color: #ccc;
-        --table-header-bg: #f8f9fa;
-        --btn-set-bg: #5bc0de;
-        --btn-set-hover-bg: #31b0d5;
-    }
-    body.dark-mode {
-        --bg-color: #2c3e50;
-        --card-bg-color: #34495e;
-        --text-color: #ecf0f1;
-        --header-color: #ffffff;
-        --border-color: #4a627a;
-        --input-bg-color: #4a627a;
-        --input-border-color: #5a738e;
-        --table-header-bg: #2c3e50;
-        --btn-set-bg: #4a627a;
-        --btn-set-hover-bg: #5a738e;
-    }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; max-width: 1400px; margin: 20px auto; padding: 10px; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
-    .card { border: 1px solid var(--border-color); background: var(--card-bg-color); transition: background-color 0.3s, border-color 0.3s; border-radius:12px; padding:20px; flex:1 1; box-sizing:border-box; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    h1, h2, h3, h4 { color: var(--header-color); margin:0 0 16px 0; }
-    h1 { text-align: center; }
-    label { display:block; margin-bottom: 5px; font-size: 14px; font-weight: 600; }
-    input[type="number"], select { width:100%; padding:10px; border: 1px solid var(--input-border-color); border-radius: 6px; box-sizing: border-box; background-color: var(--input-bg-color); color: var(--text-color); }
-    button { width: 100%; padding:10px 16px; margin-top: 8px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; transition: background-color 0.2s, transform 0.1s; }
-    button:active { transform: scale(0.98); }
-    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .btn-buy { background-color: #28a745; color: white; } .btn-buy:hover { background-color: #218838; }
-    .btn-sell { background-color: #dc3545; color: white; } .btn-sell:hover { background-color: #c82333; }
-    .btn-short { background-color: #e67e22; color: white; } .btn-short:hover { background-color: #d35400; }
-    .btn-cover { background-color: #3498db; color: white; } .btn-cover:hover { background-color: #2980b9; }
-    .btn-set { background-color: var(--btn-set-bg); color: white; font-size: 12px; padding: 6px 10px; } .btn-set:hover { background-color: var(--btn-set-hover-bg); }
-    .btn-cancel { background-color: #f0ad4e; color: white; font-size: 12px; padding: 4px 8px; } .btn-cancel:hover { background-color: #ec971f; }
-    .btn-reset { background-color: #6c757d; color:white; } .btn-reset:hover { background-color: #5a6268;}
-    table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
-    th, td { border-bottom:1px solid var(--border-color); padding:8px 6px; text-align:left; }
-    th { background-color: var(--table-header-bg); font-weight: 600; }
-    tr:last-child td { border-bottom: none; }
-    .profit { color: #28a745; }
-    .loss { color: #dc3545; }
-    #logContainer, .table-container { max-height: 220px; overflow-y: auto; }
-    .control-group { margin-bottom: 15px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 15px; font-size: 14px;}
-    .info-grid strong { color: var(--header-color); }
-    .liquidation { color: #e74c3c; font-weight: bold; }
-    .row { display:flex; gap:16px; flex-wrap:wrap; margin-top:16px; }
-    @media (max-width:900px){ .row { flex-direction:column } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Tycoon Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .nav-button.active { background-color: #4B5563; }
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background-color: #22c55e;
+            color: white;
+            border-radius: 8px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s, bottom 0.5s;
+        }
+        .toast.show {
+            opacity: 1;
+            bottom: 100px;
+        }
+        .card {
+            background: linear-gradient(45deg, #3f3f46, #1f2937);
+            border: 1px solid #52525b;
+        }
+    </style>
 </head>
-<body>
-  <button id="themeToggle" style="position:absolute; top:20px; right:20px; width:auto; padding: 8px 12px; z-index:100;" class="btn-reset">Mode</button>
+<body class="bg-gray-900 text-gray-200">
 
-  <h1>Trading Game — UI/UX Edition (Fixed)</h1>
+    <div id="app" class="max-w-md mx-auto bg-gray-800 shadow-lg rounded-lg min-h-screen flex flex-col">
+        <!-- Main Content -->
+        <main class="flex-grow p-4">
+            <div id="main-screen" class="screen">
+                 <div class="bg-gray-700 p-4 rounded-lg mb-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-400">Uang Tunai</p>
+                            <p id="money" class="text-2xl font-bold">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
+                 <div class="flex justify-center items-center my-8">
+                    <button id="click-button" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded-full w-40 h-40 flex flex-col justify-center items-center shadow-lg transition transform hover:scale-105">
+                        <span class="text-3xl" id="click-value">Rp 100</span>
+                        <span class="text-sm">KLIK</span>
+                    </button>
+                </div>
+            </div>
 
-  <div class="row">
-    <div class="card" style="flex: 0 1 400px;">
-      <div class="control-group">
-        <label for="assetSelect">Pilih Aset:</label>
-        <select id="assetSelect"></select>
-      </div>
-      <hr>
-      <h4>Info & Saldo</h4>
-      <div class="info-grid">
-        <span>Saldo (USD):</span> <strong id="balanceUSD">10000</strong>
-        <span>Harga Saat Ini:</span> <strong id="priceDisplay">-</strong>
-        <span>Total Aset Long:</span> <strong id="holdingDisplay">0</strong>
-        <span>Total Posisi Short:</span> <strong id="shortHoldingDisplay">0</strong>
-      </div>
-      <hr>
-       <h4>Aksi Trading</h4>
-      <div class="control-group">
-        <label for="leverageSelect">Leverage:</label>
-        <select id="leverageSelect">
-          <option value="1">1x (Tanpa Leverage)</option>
-          <option value="5">5x</option>
-          <option value="10">10x</option>
-          <option value="20">20x</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label for="volumeInput">Volume (unit):</label>
-        <input id="volumeInput" type="number" step="0.01" min="0.01" value="1">
-      </div>
-      <div class="btn-grid">
-        <button onclick="buy()" class="btn-buy">Buy (Long)</button>
-        <button onclick="sell()" class="btn-sell">Sell (Long)</button>
-        <button onclick="short()" class="btn-short">Short</button>
-        <button onclick="cover()" class="btn-cover">Cover (Short)</button>
-      </div>
-      <hr>
-      <h4>Order Otomatis</h4>
-      <div class="control-group">
-        <label for="orderPriceInput">Harga Target:</label>
-        <input id="orderPriceInput" type="number" step="0.01" min="0.01">
-      </div>
-       <div class="control-group">
-        <label for="orderVolumeInput">Volume Order:</label>
-        <input id="orderVolumeInput" type="number" step="0.01" min="0.01">
-      </div>
-      <div class="btn-grid">
-          <button onclick="setTakeProfit()" class="btn-set">Set Take Profit</button>
-          <button onclick="setStopLoss()" class="btn-set">Set Stop Loss</button>
-          <button onclick="setLimitOrder('buy')" class="btn-set">Set Buy Limit</button>
-          <button onclick="setLimitOrder('sell')" class="btn-set">Set Sell Limit</button>
-      </div>
-      <div style="margin-top: 20px;">
-        <button onclick="resetData()" class="btn-reset">Reset Semua Data</button>
-      </div>
-    </div>
+            <!-- Hub Bisnis -->
+            <div id="business-hub-screen" class="screen hidden bg-gray-700 p-4 rounded-lg">
+                <h2 class="text-xl font-bold mb-4 text-green-400">Manajemen Bisnis</h2>
+                <div class="bg-gray-800 p-4 rounded-lg mb-4">
+                    <p class="text-sm text-gray-400">Saldo Anda di Game Bisnis</p>
+                    <p id="business-balance" class="text-2xl font-bold">Rp 0</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-semibold mb-2">Deposit ke Game Bisnis</h3>
+                        <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="deposit-amount-business" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah deposit">
+                                <button id="deposit-max-business" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="deposit-button-business" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Deposit</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Tarik dari Game Bisnis</h3>
+                         <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="withdraw-amount-business" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah penarikan">
+                                <button id="withdraw-max-business" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="withdraw-button-business" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Tarik</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-6 text-center">
+                    <a href="game_bisnis.html" target="_blank" class="w-full block bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded">
+                        Buka Game Bisnis
+                    </a>
+                </div>
+            </div>
 
-    <div class="card" style="flex: 2 1 600px;">
-      <h3>Grafik Harga (<span id="chartAssetLabel">-</span>)</h3>
-      <div style="position: relative; height: 450px;">
-         <canvas id="priceChart"></canvas>
-      </div>
-      <div id="indicatorControls" style="margin-top: 15px; font-size: 13px; text-align: center;">
-          <span>Indikator: </span>
-          <label style="display:inline-block;"><input type="checkbox" onchange="toggleIndicator('sma')" id="smaCheck" checked> SMA(10)</label>
-          <label style="display:inline-block;"><input type="checkbox" onchange="toggleIndicator('bbands')" id="bbandsCheck"> Bollinger Bands(20)</label>
-          <label style="display:inline-block;"><input type="checkbox" onchange="toggleIndicator('rsi')" id="rsiCheck"> RSI(14)</label>
-          <label style="display:inline-block;"><input type="checkbox" onchange="toggleIndicator('macd')" id="macdCheck"> MACD(12,26,9)</label>
-        <div id="timeframeControls" style="margin-top: 10px;">
-            <span>Timeframe: </span>
-            <button class="btn-set" onclick="changeTimeframe(15000)">15d</button>
-            <button class="btn-set" onclick="changeTimeframe(60000)">1m</button>
-            <button class="btn-set" onclick="changeTimeframe(300000)">5m</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="row">
-    <div class="card">
-      <h4>Order Take Profit / Stop Loss Aktif</h4>
-      <div class="table-container">
-        <table id="tpSlTable">
-            <thead><tr><th>Aset</th><th>Jenis</th><th>Volume</th><th>Harga Pemicu</th><th>Aksi</th></tr></thead>
-            <tbody><tr><td colspan="5" style="text-align:center;">Tidak ada order</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-        <h4>Order Limit Aktif</h4>
-        <div class="table-container">
-          <table id="limitOrderTable">
-              <thead><tr><th>Aset</th><th>Jenis</th><th>Volume</th><th>Harga Limit</th><th>Aksi</th></tr></thead>
-              <tbody><tr><td colspan="5" style="text-align:center;">Tidak ada order</td></tr></tbody>
-          </table>
-        </div>
-    </div>
-  </div>
-  
-  <div class="row">
-    <div class="card" style="flex: 1 1 100%;">
-      <h3>Ringkasan Aset & Posisi</h3>
-      <div id="summaryArea" class="table-container"></div>
-    </div>
-  </div>
-   <div class="row">
-    <div class="card" style="flex: 1 1 100%;">
-      <h3>Log Transaksi</h3>
-      <div id="logContainer">
-        <table id="logTable"><thead><tr><th>Waktu</th><th>Aset</th><th>Jenis</th><th>Volume</th><th>Harga</th><th>Total Notional</th><th>Biaya</th></tr></thead><tbody></tbody></table>
-      </div>
-    </div>
-  </div>
-  
-<script>
-'use strict';
-/* ======= CONFIG & STATE ======= */
-const allAssets = ["BTC", "ETH", "XRP", "GOOGL", "AAPL", "TSLA", "EURUSD", "GBPUSD"];
-const initialPricesUSD = { BTC: 68000, ETH: 3500, XRP: 0.52, GOOGL: 175, AAPL: 210, TSLA: 180, EURUSD: 1.08, GBPUSD: 1.27 };
-const interval = 1500;
-const transactionFeePercent = 0.1;
-let state = {};
+            <!-- Hub Bursa Saham -->
+            <div id="exchange-screen" class="screen hidden bg-gray-700 p-4 rounded-lg">
+                 <h2 class="text-xl font-bold mb-4 text-purple-400">Bursa Saham</h2>
+                <div class="bg-gray-800 p-4 rounded-lg mb-4">
+                    <p class="text-sm text-gray-400">Saldo Anda di Bursa</p>
+                    <p id="exchange-balance" class="text-2xl font-bold">Rp 0</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-semibold mb-2">Deposit ke Bursa</h3>
+                        <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="deposit-amount-exchange" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah deposit">
+                                <button id="deposit-max-exchange" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="deposit-button-exchange" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Deposit</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Tarik dari Bursa</h3>
+                         <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="withdraw-amount-exchange" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah penarikan">
+                                <button id="withdraw-max-exchange" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="withdraw-button-exchange" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Tarik</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-6 text-center">
+                    <a href="bursa_saham.html" target="_blank" class="w-full block bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded">
+                        Buka Platform Bursa Saham
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Hub Trading Platform -->
+             <div id="trading-screen" class="screen hidden bg-gray-700 p-4 rounded-lg">
+                 <h2 class="text-xl font-bold mb-4 text-cyan-400">Platform Trading (Forex/Saham)</h2>
+                <div class="bg-gray-800 p-4 rounded-lg mb-4">
+                    <p class="text-sm text-gray-400">Saldo di Platform Trading</p>
+                    <p id="trading-balance" class="text-2xl font-bold">Rp 0</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-semibold mb-2">Deposit ke Platform Trading</h3>
+                         <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="deposit-amount-trading" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah deposit">
+                                <button id="deposit-max-trading" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="deposit-button-trading" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Deposit</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Tarik dari Platform Trading</h3>
+                         <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="withdraw-amount-trading" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah penarikan">
+                                <button id="withdraw-max-trading" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="withdraw-button-trading" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Tarik</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-6 text-center">
+                    <a href="trading_platform.html" target="_blank" class="w-full block bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded">
+                        Buka Platform Trading
+                    </a>
+                </div>
+            </div>
 
-const defaultState = {
-    balanceUSD: 10000,
-    prices: {...initialPricesUSD},
-    histories: Object.fromEntries(allAssets.map(a => [a, []])),
-    holdings: Object.fromEntries(allAssets.map(a => [a, { volume: 0, value: 0, entryPrice: 0, leverage: 1, liquidationPrice: null }])),
-    shortPositions: Object.fromEntries(allAssets.map(a => [a, { volume: 0, value: 0, entryPrice: 0, leverage: 1, liquidationPrice: null }])),
-    logs: [],
-    orders: [], 
-    activeIndicators: { sma: true, rsi: false, bbands: false, macd: false },
-    marketTrends: Object.fromEntries(allAssets.map(a => [a, { trend: 'sideways', ticksRemaining: 100 }])),
-    activeTimeframe: 15000,
-};
+            <!-- Hub Crypto Exchange -->
+            <div id="crypto-screen" class="screen hidden bg-gray-700 p-4 rounded-lg">
+                 <h2 class="text-xl font-bold mb-4 text-orange-400">Crypto Exchange</h2>
+                <div class="bg-gray-800 p-4 rounded-lg mb-4">
+                    <p class="text-sm text-gray-400">Saldo di Crypto Exchange</p>
+                    <p id="crypto-balance" class="text-2xl font-bold">Rp 0</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-semibold mb-2">Deposit ke Crypto Exchange</h3>
+                         <div class="flex space-x-2">
+                             <div class="relative w-full">
+                                <input type="number" id="deposit-amount-crypto" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah deposit">
+                                <button id="deposit-max-crypto" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="deposit-button-crypto" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Deposit</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Tarik dari Crypto Exchange</h3>
+                         <div class="flex space-x-2">
+                            <div class="relative w-full">
+                                <input type="number" id="withdraw-amount-crypto" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah penarikan">
+                                <button id="withdraw-max-crypto" class="absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300">MAX</button>
+                            </div>
+                            <button id="withdraw-button-crypto" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Tarik</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-6 text-center">
+                    <a href="crypto_exchange.html" target="_blank" class="w-full block bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded">
+                        Buka Crypto Exchange
+                    </a>
+                </div>
+            </div>
+            
+            <div id="shop-screen" class="screen hidden bg-gray-700 p-4 rounded-lg">
+                 <h2 class="text-xl font-bold mb-4 text-yellow-400">Toko Upgrade</h2>
+                 <p class="text-gray-400 mb-4">Beli upgrade berbatas waktu untuk meningkatkan progres game Anda di halaman Toko.</p>
+                 <div class="mt-6 text-center">
+                    <a href="shop.html" target="_blank" class="w-full block bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-4 rounded">
+                        Buka Toko
+                    </a>
+                </div>
+            </div>
 
-/* ======= UI ELEMENTS ======= */
-const ui = {
-    assetSelect: document.getElementById('assetSelect'),
-    leverageSelect: document.getElementById('leverageSelect'),
-    balanceUSD: document.getElementById('balanceUSD'),
-    priceDisplay: document.getElementById('priceDisplay'),
-    holdingDisplay: document.getElementById('holdingDisplay'),
-    shortHoldingDisplay: document.getElementById('shortHoldingDisplay'),
-    chartAssetLabel: document.getElementById('chartAssetLabel'),
-    volumeInput: document.getElementById('volumeInput'),
-    orderPriceInput: document.getElementById('orderPriceInput'),
-    orderVolumeInput: document.getElementById('orderVolumeInput'),
-    tpSlTableBody: document.querySelector('#tpSlTable tbody'),
-    limitOrderTableBody: document.querySelector('#limitOrderTable tbody'),
-    summaryArea: document.getElementById('summaryArea'),
-    logTableBody: document.querySelector('#logTable tbody'),
-    themeToggle: document.getElementById('themeToggle')
-};
+            <!-- Card Management Screen -->
+            <div id="card-screen" class="screen hidden">
+                <h2 class="text-xl font-bold mb-4 text-center">Manajemen Kartu & Bank</h2>
+                <div class="bg-gray-700 p-4 rounded-lg mb-4 text-center">
+                    <p class="text-sm text-gray-400">Total Uang di Bank</p>
+                    <p id="total-in-bank" class="text-3xl font-bold text-cyan-400">Rp 0</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg mb-4">
+                    <h3 class="font-semibold mb-2">Buat Kartu Bank Baru</h3>
+                    <div class="flex space-x-2">
+                        <input type="text" id="card-name-input" class="w-full bg-gray-900 p-2 rounded" placeholder="Nama Kartu (Contoh: Belanja)">
+                        <button id="create-card-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Buat</button>
+                    </div>
+                </div>
+                <div id="card-list" class="space-y-4">
+                    <!-- Kartu yang dibuat akan muncul di sini -->
+                </div>
+            </div>
+        </main>
 
-/* ======= NOTIFICATION SYSTEM ======= */
-function showToast(text, type = 'info') {
-    let backgroundColor;
-    switch (type) {
-        case 'success': backgroundColor = "linear-gradient(to right, #00b09b, #96c93d)"; break;
-        case 'error': backgroundColor = "linear-gradient(to right, #ff5f6d, #ffc371)"; break;
-        case 'liquidation': backgroundColor = "linear-gradient(to right, #d32f2f, #e74c3c)"; break;
-        default: backgroundColor = "linear-gradient(to right, #0083B0, #00B4DB)";
+        <!-- Navigation -->
+        <nav class="bg-gray-900 p-2 grid grid-cols-7 gap-1 sticky bottom-0">
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center active" data-screen="main-screen">🏠<span class="text-xs">Utama</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="business-hub-screen">🏢<span class="text-xs">Bisnis</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="exchange-screen">🏛️<span class="text-xs">Bursa</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="trading-screen">📊<span class="text-xs">Trading</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="crypto-screen">🪙<span class="text-xs">Crypto</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="shop-screen">🛍️<span class="text-xs">Toko</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="card-screen">💳<span class="text-xs">Kartu</span></button>
+        </nav>
+    </div>
+    <div id="toast-container"></div>
+
+    <script>
+    let money = 100000; // Represents cash on hand
+    let bankData = { cards: [] };
+    
+    // Cache UI Elements
+    const moneyEl = document.getElementById('money');
+    const clickButton = document.getElementById('click-button');
+    const clickValueEl = document.getElementById('click-value');
+    
+    // Card Screen elements
+    const totalInBankEl = document.getElementById('total-in-bank');
+    const cardListEl = document.getElementById('card-list');
+    const createCardBtn = document.getElementById('create-card-btn');
+    const cardNameInput = document.getElementById('card-name-input');
+    
+    // Hub Balance elements
+    const businessBalanceEl = document.getElementById('business-balance');
+    const exchangeBalanceEl = document.getElementById('exchange-balance');
+    const tradingBalanceEl = document.getElementById('trading-balance');
+    const cryptoBalanceEl = document.getElementById('crypto-balance');
+    
+    const suffixes = ['', 'Rb', 'Jt', 'M', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg', 'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg'];
+
+    function formatCurrency(num) {
+        if (isNaN(num)) num = 0;
+        if (num < 1000000) {
+            return `Rp ${Math.floor(num).toLocaleString('id-ID')}`;
+        }
+        const i = Math.floor(Math.log10(num) / 3);
+        if (i < suffixes.length) {
+            const scaledNum = num / Math.pow(1000, i);
+            const formattedNum = scaledNum.toFixed(2).replace(/\.00$/, '').replace(/\.([1-9])0$/, '.$1');
+            return `Rp ${formattedNum} ${suffixes[i]}`;
+        }
+        return `Rp ${num.toExponential(2)}`;
     }
-    Toastify({ text: text, duration: 3000, gravity: "bottom", position: "right", style: { background: backgroundColor } }).showToast();
-}
 
-/* ======= PERSISTENCE (SAVE/LOAD) ======= */
-function saveState() { localStorage.setItem('tradingGameUXStateFixed', JSON.stringify(state)); }
-function loadState() {
-    const savedState = localStorage.getItem('tradingGameUXStateFixed');
-    if (savedState) {
-        state = JSON.parse(savedState);
-        if (!state.marketTrends) state.marketTrends = JSON.parse(JSON.stringify(defaultState.marketTrends));
-        if (!state.activeTimeframe) state.activeTimeframe = defaultState.activeTimeframe;
-    } else {
-        state = JSON.parse(JSON.stringify(defaultState));
-    }
-    Object.keys(state.activeIndicators).forEach(key => {
-        const checkbox = document.getElementById(`${key}Check`);
-        if (checkbox) checkbox.checked = state.activeIndicators[key];
-    });
-}
+    // --- STATE MANAGEMENT ---
+    function loadState() {
+        const savedMoney = localStorage.getItem('idleTycoonMoney');
+        const savedBankData = localStorage.getItem('idleTycoonBankData');
+        const initialMoney = 100000;
 
-/* ======= INDICATOR & DATA AGGREGATION ======= */
-function calculateEMA(data, period) { let ema = new Array(data.length).fill(null); if(data.length < period) return ema; const k = 2 / (period + 1); ema[period - 1] = data.slice(0, period).reduce((a, b) => a + b, 0) / period; for (let i = period; i < data.length; i++) { ema[i] = (data[i] * k) + ema[i-1] * (1 - k); } return ema; }
-function calculateSMA(data, period) { let sma = new Array(data.length).fill(null); for (let i = period - 1; i < data.length; i++) { sma[i] = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period; } return sma; }
-function calculateBollingerBands(data, period, stdDevMultiplier) { let bbands = { upper: new Array(data.length).fill(null), middle: new Array(data.length).fill(null), lower: new Array(data.length).fill(null) }; for (let i = period - 1; i < data.length; i++) { const slice = data.slice(i - period + 1, i + 1); const sma = slice.reduce((a, b) => a + b, 0) / period; const stdDev = Math.sqrt(slice.map(x => Math.pow(x - sma, 2)).reduce((a, b) => a + b) / period); bbands.middle[i] = sma; bbands.upper[i] = sma + (stdDev * stdDevMultiplier); bbands.lower[i] = sma - (stdDev * stdDevMultiplier); } return bbands; }
-function calculateRSI(data, period) { let rsi = new Array(data.length).fill(null); let avgGain = 0, avgLoss = 0; for (let i = 1; i < data.length; i++) { const change = data[i] - data[i - 1]; if (i <= period) { if (change > 0) { avgGain += change; } else { avgLoss -= change; } if (i === period) { avgGain /= period; avgLoss /= period; } } else { avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period; avgLoss = (avgLoss * (period - 1) + (change < 0 ? -change : 0)) / period; } if (i >= period) { if (avgLoss === 0) { rsi[i] = 100; } else { const rs = avgGain / avgLoss; rsi[i] = 100 - (100 / (1 + rs)); } } } return rsi; }
-function calculateMACD(data, period1, period2, signalPeriod) { const emaFast = calculateEMA(data, period1); const emaSlow = calculateEMA(data, period2); let macdLine = new Array(data.length).fill(null); for (let i = 0; i < data.length; i++) { if (emaFast[i] !== null && emaSlow[i] !== null) { macdLine[i] = emaFast[i] - emaSlow[i]; } } const signalLine = calculateEMA(macdLine.filter(v => v !== null), signalPeriod); let histogram = new Array(data.length).fill(null); let macdNotNull = macdLine.filter(v => v !== null); for (let i = 0; i < macdNotNull.length; i++) { if (macdNotNull[i] !== null && signalLine[i] !== null) { histogram[i + (data.length - macdNotNull.length)] = macdNotNull[i] - signalLine[i]; } } return { macdLine, signalLine: signalLine.map(v => v), histogram }; }
-
-function aggregateData(asset, timeframe) {
-    const history = state.histories[asset];
-    if (!history || history.length < 2) return [];
-    const ohlcData = [];
-    let currentBucketTime = Math.floor(history[0].t / timeframe) * timeframe;
-    let bucketPrices = [];
-    for (const point of history) {
-        const pointBucketTime = Math.floor(point.t / timeframe) * timeframe;
-        if (pointBucketTime === currentBucketTime) {
-            bucketPrices.push(point.p);
+        if (savedMoney) {
+            const parsedMoney = parseFloat(savedMoney);
+            // If parsing fails (e.g., from an old formatted string with suffixes) or results in NaN, reset to default.
+            if (!isNaN(parsedMoney)) {
+                money = parsedMoney;
+            } else {
+                console.warn("Gagal memuat saldo, kembali ke nilai awal.");
+                money = initialMoney;
+            }
         } else {
-            if (bucketPrices.length > 0) {
-                ohlcData.push({ x: currentBucketTime, o: bucketPrices[0], h: Math.max(...bucketPrices), l: Math.min(...bucketPrices), c: bucketPrices[bucketPrices.length - 1] });
+            money = initialMoney; // Default for new players
+        }
+
+        if (savedBankData) {
+            try {
+                bankData = JSON.parse(savedBankData);
+            } catch (e) {
+                console.error("Gagal memuat data bank, mereset data bank.", e);
+                bankData = { cards: [] };
             }
-            bucketPrices = [point.p];
-            currentBucketTime = pointBucketTime;
+        } else {
+            bankData = { cards: [] };
         }
-    }
-    if (bucketPrices.length > 0) { ohlcData.push({ x: currentBucketTime, o: bucketPrices[0], h: Math.max(...bucketPrices), l: Math.min(...bucketPrices), c: bucketPrices[bucketPrices.length - 1] }); }
-    return ohlcData;
-}
+        
+        if (!bankData || !bankData.cards) bankData = { cards: [] };
 
-
-/* ======= CHART SETUP & CONTROL ======= */
-const chart = new Chart('priceChart', {
-    type: 'candlestick',
-    data: {
-        datasets: [{
-            label: 'Harga',
-            data: [], // format: {x, o, h, l, c}
-        },
-        { type: 'line', label: 'SMA(10)', data:[], borderColor: '#f1c40f', borderWidth: 1.5, pointRadius: 0, hidden: false },
-        { type: 'line', label: 'BB Upper', data:[], borderColor: '#e74c3c', borderWidth: 1, pointRadius: 0, hidden: true },
-        { type: 'line', label: 'BB Lower', data:[], borderColor: '#e74c3c', borderWidth: 1, pointRadius: 0, fill: false, hidden: true },
-        ]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: 'index', intersect: false },
-        scales: { x: { type: 'time', time: { unit: 'second' } }, y: { position: 'left', title: { display: true, text: 'Harga (USD)' } } }
-    }
-});
-
-function updateChart(asset) {
-    const ohlcData = aggregateData(asset, state.activeTimeframe);
-    chart.data.datasets[0].data = ohlcData;
-    
-    const closePrices = ohlcData.map(d => d.c);
-    const timeLabels = ohlcData.map(d => d.x);
-
-    // PERBAIKAN: Format data indikator menjadi {x, y} agar sejajar dengan sumbu waktu
-    const smaData = calculateSMA(closePrices, 10);
-    chart.data.datasets[1].data = smaData.map((val, i) => ({ x: timeLabels[i], y: val }));
-
-    const bbands = calculateBollingerBands(closePrices, 20, 2);
-    chart.data.datasets[2].data = bbands.upper.map((val, i) => ({ x: timeLabels[i], y: val }));
-    chart.data.datasets[3].data = bbands.lower.map((val, i) => ({ x: timeLabels[i], y: val }));
-    
-    chart.update('none');
-}
-
-function toggleIndicator(name) {
-    state.activeIndicators[name] = !state.activeIndicators[name];
-    document.getElementById(`${name}Check`).checked = state.activeIndicators[name];
-    
-    if (name === 'sma') chart.getDatasetMeta(1).hidden = !state.activeIndicators.sma;
-    if (name === 'bbands') {
-        chart.getDatasetMeta(2).hidden = !state.activeIndicators.bbands;
-        chart.getDatasetMeta(3).hidden = !state.activeIndicators.bbands;
-    }
-    // Logika untuk RSI dan MACD bisa ditambahkan di sini jika diimplementasikan
-    chart.update();
-}
-
-function changeTimeframe(ms) {
-    state.activeTimeframe = ms;
-    const unit = ms < 60000 ? 'second' : 'minute';
-    chart.options.scales.x.time.unit = unit;
-    updateDisplayAll();
-}
-
-
-/* ======= CORE TRADING ACTIONS ======= */
-function executeTrade(asset, type, volume, price, isLiquidation = false) {
-    const leverage = isLiquidation ? 1 : parseInt(ui.leverageSelect.value);
-    const marginValue = volume * price;
-    const notionalValue = marginValue * leverage;
-    const fee = notionalValue * (transactionFeePercent / 100);
-
-    function recalculatePosition(pos, addVolume, addValue, addLeverage, entryPrice) {
-        const existingNotional = pos.volume * pos.entryPrice * pos.leverage;
-        const newNotional = addVolume * entryPrice * addLeverage;
-        const totalVolume = pos.volume + addVolume;
-        const totalNotional = existingNotional + newNotional;
-        pos.leverage = totalNotional / (pos.value + addValue);
-        pos.entryPrice = totalNotional / (totalVolume * pos.leverage);
-        pos.volume = totalVolume;
-        pos.value += addValue;
+        checkForWithdrawals();
+        updateUI();
     }
 
-    let success = false;
-    if (type === 'BUY') {
-        const totalCost = (marginValue / leverage) + fee;
-        if (state.balanceUSD < totalCost) { showToast('Saldo tidak cukup untuk margin dan biaya!', 'error'); return; }
-        
-        state.balanceUSD -= totalCost;
-        const h = state.holdings[asset];
-        
-        if (h.volume > 0) { recalculatePosition(h, volume, marginValue, leverage, price); }
-        else { h.volume = volume; h.value = marginValue; h.entryPrice = price; h.leverage = leverage; }
-        h.liquidationPrice = leverage > 1 ? h.entryPrice * (1 - (1 / h.leverage) * 0.95) : null;
-        success = true;
-    } else if (type === 'SELL') {
-        const h = state.holdings[asset];
-        if (h.volume < volume) { showToast('Unit yang dimiliki tidak cukup!', 'error'); return; }
-        
-        const avgEntryPrice = h.entryPrice;
-        const pnl = (price - avgEntryPrice) * volume * h.leverage;
-        const marginToReturn = (h.value / h.volume) * volume;
-        state.balanceUSD += (marginToReturn + pnl - fee);
-        
-        const closeRatio = volume / h.volume;
-        h.value *= (1 - closeRatio);
-        h.volume -= volume;
-        if (h.volume < 0.0001) { h.volume = 0; h.value=0; h.entryPrice = 0; h.leverage = 1; h.liquidationPrice = null; }
-        success = true;
-    } else if (type === 'SHORT') {
-        const totalCost = (marginValue / leverage) + fee;
-        if (state.balanceUSD < totalCost) { showToast('Saldo tidak cukup untuk margin dan biaya!', 'error'); return; }
-
-        state.balanceUSD -= totalCost;
-        const s = state.shortPositions[asset];
-        if (s.volume > 0) { recalculatePosition(s, volume, marginValue, leverage, price); }
-        else { s.volume = volume; s.value = marginValue; s.entryPrice = price; s.leverage = leverage; }
-        s.liquidationPrice = leverage > 1 ? s.entryPrice * (1 + (1 / s.leverage) * 0.95) : null;
-        success = true;
-    } else if (type === 'COVER') {
-        const s = state.shortPositions[asset];
-        if (s.volume < volume) { showToast('Unit yang di-short tidak cukup!', 'error'); return; }
-        
-        const pnl = (s.entryPrice - price) * volume * s.leverage;
-        const marginToReturn = (s.value / s.volume) * volume;
-        state.balanceUSD += (marginToReturn + pnl - fee);
-        
-        const closeRatio = volume / s.volume;
-        s.value *= (1-closeRatio);
-        s.volume -= volume;
-        if (s.volume < 0.0001) { s.volume=0; s.value=0; s.entryPrice = 0; s.leverage = 1; s.liquidationPrice = null; }
-        success = true;
+    function saveState() {
+        localStorage.setItem('idleTycoonMoney', money.toString());
+        localStorage.setItem('idleTycoonBankData', JSON.stringify(bankData));
     }
     
-    if (success && !isLiquidation) {
-        showToast(`${type} ${formatNum(volume, 4)} ${asset} @ ${formatNum(price)} berhasil!`, 'success');
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.getElementById('toast-container').appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     }
 
-    state.logs.unshift({ time: Date.now(), asset, type, volume, price, total: notionalValue, fee: fee, liquidation: isLiquidation });
-    saveAll();
-}
-
-/* ======= ORDER MANAGEMENT & HELPERS ======= */
-function formatNum(num, dec = 2) { return num ? num.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: 4 }) : '0.00'; }
-const buy = () => executeTrade(ui.assetSelect.value, 'BUY', parseFloat(ui.volumeInput.value), state.prices[ui.assetSelect.value]);
-const sell = () => executeTrade(ui.assetSelect.value, 'SELL', parseFloat(ui.volumeInput.value), state.prices[ui.assetSelect.value]);
-const short = () => executeTrade(ui.assetSelect.value, 'SHORT', parseFloat(ui.volumeInput.value), state.prices[ui.assetSelect.value]);
-const cover = () => executeTrade(ui.assetSelect.value, 'COVER', parseFloat(ui.volumeInput.value), state.prices[ui.assetSelect.value]);
-function addOrder(type) { const asset = ui.assetSelect.value; const price = parseFloat(ui.orderPriceInput.value); const volume = parseFloat(ui.orderVolumeInput.value); if (isNaN(price) || isNaN(volume) || price <= 0 || volume <= 0) { showToast('Harga atau volume order tidak valid.', 'error'); return; } state.orders.push({ id: Date.now(), asset, type, volume, price }); ui.orderPriceInput.value = ''; ui.orderVolumeInput.value = ''; saveAll(); showToast(`Order ${type} untuk ${asset} telah dibuat!`, 'info'); }
-const setTakeProfit = () => addOrder('tp');
-const setStopLoss = () => addOrder('sl');
-const setLimitOrder = (type) => addOrder(type === 'buy' ? 'buylimit' : 'selllimit');
-function cancelOrder(id) { state.orders = state.orders.filter(o => o.id !== id); saveAll(); }
-function checkOrders() { state.orders = state.orders.filter(order => { const currentPrice = state.prices[order.asset]; let triggered = false; if (order.type === 'tp' && currentPrice >= order.price) { executeTrade(order.asset, 'SELL', order.volume, order.price); triggered = true; } else if (order.type === 'sl' && currentPrice <= order.price) { executeTrade(order.asset, 'SELL', order.volume, order.price); triggered = true; } else if (order.type === 'buylimit' && currentPrice <= order.price) { executeTrade(order.asset, 'BUY', order.volume, order.price); triggered = true; } else if (order.type === 'selllimit' && currentPrice >= order.price) { executeTrade(order.asset, 'SELL', order.volume, order.price); triggered = true; } return !triggered; }); }
-
-/* ======= UI RENDERING & DISPLAY ======= */
-function renderOrders() {
-    const tpslBody = ui.tpSlTableBody;
-    const limitBody = ui.limitOrderTableBody;
-    tpslBody.innerHTML = '';
-    limitBody.innerHTML = '';
-    const tpslOrders = state.orders.filter(o => o.type === 'tp' || o.type === 'sl');
-    const limitOrders = state.orders.filter(o => o.type.includes('limit'));
-    if (tpslOrders.length === 0) tpslBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Tidak ada order</td></tr>';
-    tpslOrders.forEach(o => { tpslBody.innerHTML += `<tr><td>${o.asset}</td><td>${o.type.toUpperCase()}</td><td>${o.volume}</td><td>${formatNum(o.price)}</td><td><button class="btn-cancel" onclick="cancelOrder(${o.id})">Batal</button></td></tr>`; });
-    if (limitOrders.length === 0) limitBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Tidak ada order</td></tr>';
-    limitOrders.forEach(o => { limitBody.innerHTML += `<tr><td>${o.asset}</td><td>${o.type.toUpperCase()}</td><td>${o.volume}</td><td>${formatNum(o.price)}</td><td><button class="btn-cancel" onclick="cancelOrder(${o.id})">Batal</button></td></tr>`; });
-}
-
-function renderSummary() {
-    let html = '<table><thead><tr><th>Aset</th><th>Posisi</th><th>Volume</th><th>Leverage</th><th>Harga Masuk</th><th>Harga Saat Ini</th><th>Harga Likuidasi</th><th>P/L</th><th>P/L % (vs Margin)</th></tr></thead><tbody>';
-    allAssets.forEach(asset => {
-        const h = state.holdings[asset];
-        const s = state.shortPositions[asset];
-        const currentPrice = state.prices[asset];
-        if (h.volume > 0) {
-            const pnl = (currentPrice - h.entryPrice) * h.volume * h.leverage;
-            const pnlPercent = (pnl / h.value) * 100;
-            const pnlClass = pnl >= 0 ? 'profit' : 'loss';
-            const liqPrice = h.liquidationPrice ? formatNum(h.liquidationPrice) : '-';
-            html += `<tr><td>${asset}</td><td>LONG</td><td>${formatNum(h.volume,4)}</td><td>${h.leverage}x</td><td>${formatNum(h.entryPrice)}</td><td>${formatNum(currentPrice)}</td><td class="liquidation">${liqPrice}</td><td class="${pnlClass}">${formatNum(pnl)}</td><td class="${pnlClass}">${pnlPercent.toFixed(2)}%</td></tr>`;
+    function checkForWithdrawals() {
+        const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
+        if (tycoonWithdrawal > 0) {
+            money += tycoonWithdrawal;
+            localStorage.setItem('tycoonWithdrawal', '0'); // Reset after claiming
+            showToast(`Anda menerima transfer sebesar ${formatCurrency(tycoonWithdrawal)}.`);
+            saveState(); // Save immediately after receiving funds
+            updateUI();
         }
-        if (s.volume > 0) {
-            const pnl = (s.entryPrice - currentPrice) * s.volume * s.leverage;
-            const pnlPercent = (pnl / s.value) * 100;
-            const pnlClass = pnl >= 0 ? 'profit' : 'loss';
-            const liqPrice = s.liquidationPrice ? formatNum(s.liquidationPrice) : '-';
-            html += `<tr><td>${asset}</td><td>SHORT</td><td>${formatNum(s.volume,4)}</td><td>${s.leverage}x</td><td>${formatNum(s.entryPrice)}</td><td>${formatNum(currentPrice)}</td><td class="liquidation">${liqPrice}</td><td class="${pnlClass}">${formatNum(pnl)}</td><td class="${pnlClass}">${pnlPercent.toFixed(2)}%</td></tr>`;
-        }
-    });
-    ui.summaryArea.innerHTML = html + '</tbody></table>';
-}
-
-function renderLogs() {
-    ui.logTableBody.innerHTML = '';
-    state.logs.slice(0, 50).forEach(log => {
-        const time = new Date(log.time).toLocaleTimeString('en-GB');
-        const typeClass = log.liquidation ? 'class="liquidation"' : '';
-        ui.logTableBody.innerHTML += `<tr><td>${time}</td><td>${log.asset}</td><td ${typeClass}>${log.liquidation ? 'LIQUIDATION' : log.type}</td><td>${formatNum(log.volume,4)}</td><td>${formatNum(log.price)}</td><td>${formatNum(log.total)}</td><td>${formatNum(log.fee, 4)}</td></tr>`;
-    });
-}
-
-function updateDisplayAll() {
-    const activeAsset = ui.assetSelect.value;
-    ui.balanceUSD.textContent = formatNum(state.balanceUSD);
-    ui.priceDisplay.textContent = formatNum(state.prices[activeAsset]);
-    ui.holdingDisplay.textContent = formatNum(state.holdings[activeAsset].volume, 4);
-    ui.shortHoldingDisplay.textContent = formatNum(state.shortPositions[activeAsset].volume, 4);
-    ui.chartAssetLabel.textContent = activeAsset;
-    renderOrders();
-    renderSummary();
-    renderLogs();
-    updateChart(activeAsset);
-}
-
-function saveAll() { saveState(); updateDisplayAll(); }
-
-/* ======= MAIN GAME LOOP & INITIALIZATION ======= */
-function simulatePrices() {
-    allAssets.forEach(asset => {
-        const trendInfo = state.marketTrends[asset];
-        let drift = 0;
-        const volatility = asset.includes('USD') ? 0.0005 : 0.005;
-        if (trendInfo.trend === 'bullish') drift = volatility * 0.2;
-        else if (trendInfo.trend === 'bearish') drift = -volatility * 0.2;
-        const randomFactor = (Math.random() - 0.49) * state.prices[asset] * volatility;
-        const driftFactor = state.prices[asset] * drift;
-        const change = randomFactor + driftFactor;
-        state.prices[asset] = Math.max(0.0001, state.prices[asset] + change);
-        trendInfo.ticksRemaining--;
-        if (trendInfo.ticksRemaining <= 0) { const rand = Math.random(); if (rand < 0.4) trendInfo.trend = 'bullish'; else if (rand < 0.8) trendInfo.trend = 'bearish'; else trendInfo.trend = 'sideways'; trendInfo.ticksRemaining = Math.floor(Math.random() * 100) + 50; }
-        state.histories[asset].push({ t: Date.now(), p: state.prices[asset] });
-        if(state.histories[asset].length > 500) state.histories[asset].shift();
-    });
-}
-
-function checkLiquidations() {
-    allAssets.forEach(asset => {
-        const currentPrice = state.prices[asset];
-        const h = state.holdings[asset];
-        if (h.volume > 0 && h.liquidationPrice && currentPrice <= h.liquidationPrice) {
-            showToast(`LIKUIDASI: Posisi LONG ${asset} ditutup paksa!`, 'liquidation');
-            executeTrade(asset, 'SELL', h.volume, h.liquidationPrice, true);
-        }
-        const s = state.shortPositions[asset];
-        if (s.volume > 0 && s.liquidationPrice && currentPrice >= s.liquidationPrice) {
-             showToast(`LIKUIDASI: Posisi SHORT ${asset} ditutup paksa!`, 'liquidation');
-            executeTrade(asset, 'COVER', s.volume, s.liquidationPrice, true);
-        }
-    });
-}
-
-function gameLoop() {
-    simulatePrices();
-    checkOrders();
-    checkLiquidations();
-    updateDisplayAll();
-}
-
-function applyTheme(theme) {
-    if (theme === 'dark') {
-        document.body.classList.add('dark-mode');
-        ui.themeToggle.textContent = 'Mode Terang';
-    } else {
-        document.body.classList.remove('dark-mode');
-        ui.themeToggle.textContent = 'Mode Gelap';
     }
-}
 
-function resetData() {
-    if (confirm('Anda yakin ingin mereset semua data permainan? Tindakan ini tidak dapat dibatalkan.')) {
-        localStorage.removeItem('tradingGameUXStateFixed');
-        state = JSON.parse(JSON.stringify(defaultState));
-        init();
+    // --- RENDER FUNCTIONS ---
+    function renderCards() {
+        if(!totalInBankEl) return;
+        totalInBankEl.textContent = formatCurrency(bankData.cards.reduce((sum, card) => sum + card.balance, 0));
+        if (bankData.cards.length === 0) {
+            cardListEl.innerHTML = `<p class="text-center text-gray-500">Anda belum punya kartu bank.</p>`;
+            return;
+        }
+        cardListEl.innerHTML = bankData.cards.map((card, index) => `
+            <div class="card p-4 rounded-lg shadow-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-bold text-lg">${card.name}</h4>
+                    <p class="font-mono text-xl">${formatCurrency(card.balance)}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                         <div class="relative w-full">
+                            <input type="number" class="w-full bg-gray-900 p-2 rounded pr-12 text-sm" placeholder="Jumlah Setor" data-action="deposit" data-index="${index}">
+                            <button class="card-action-btn-max absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300" data-action="deposit-max" data-index="${index}">MAX</button>
+                        </div>
+                        <button class="card-action-btn mt-1 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-1 rounded text-sm" data-action="deposit" data-index="${index}">Setor</button>
+                    </div>
+                    <div>
+                        <div class="relative w-full">
+                            <input type="number" class="w-full bg-gray-900 p-2 rounded pr-12 text-sm" placeholder="Jumlah Tarik" data-action="withdraw" data-index="${index}">
+                            <button class="card-action-btn-max absolute inset-y-0 right-0 px-3 text-sm font-bold text-yellow-400 hover:text-yellow-300" data-action="withdraw-max" data-index="${index}">MAX</button>
+                        </div>
+                        <button class="card-action-btn mt-1 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-1 rounded text-sm" data-action="withdraw" data-index="${index}">Tarik</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
     }
-}
 
-function init() {
-    const savedTheme = localStorage.getItem('tradingGameTheme') || 'light';
-    applyTheme(savedTheme);
-    loadState();
+    function updateUI() {
+        moneyEl.textContent = formatCurrency(money);
+        clickValueEl.textContent = formatCurrency(getClickValue());
+        updateBalances();
+        if(document.getElementById('card-screen').classList.contains('screen') && !document.getElementById('card-screen').classList.contains('hidden')) {
+            renderCards();
+        }
+    }
     
-    ui.assetSelect.innerHTML = '';
-    allAssets.forEach(asset => {
-        const option = document.createElement('option');
-        option.value = option.textContent = asset;
-        ui.assetSelect.appendChild(option);
-    });
-    ui.assetSelect.addEventListener('change', updateDisplayAll);
-    ui.themeToggle.addEventListener('click', () => {
-        const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        localStorage.setItem('tradingGameTheme', newTheme);
-        applyTheme(newTheme);
+    function updateBalances() {
+        const businessData = JSON.parse(localStorage.getItem('businessGameData')) || { balance: 0 };
+        if(businessBalanceEl) businessBalanceEl.textContent = formatCurrency(businessData.balance);
+        
+        const exchangeData = JSON.parse(localStorage.getItem('stockExchangeData')) || { balance: 0 };
+        if(exchangeBalanceEl) exchangeBalanceEl.textContent = formatCurrency(exchangeData.balance);
+
+        const tradingData = JSON.parse(localStorage.getItem('tradingPlatformSaveData')) || { balance: 0 };
+        if(tradingBalanceEl) tradingBalanceEl.textContent = formatCurrency(tradingData.balance);
+        
+        const cryptoData = JSON.parse(localStorage.getItem('cryptoExchangeData')) || { balance: 0 };
+        if(cryptoBalanceEl) cryptoBalanceEl.textContent = formatCurrency(cryptoData.balance);
+    }
+
+    // --- CARD ACTIONS ---
+    createCardBtn.addEventListener('click', () => {
+        const name = cardNameInput.value.trim();
+        if (name) {
+            bankData.cards.push({ name: name, balance: 0 });
+            cardNameInput.value = '';
+            saveState();
+            renderCards();
+        } else {
+            alert("Nama kartu tidak boleh kosong.");
+        }
     });
 
-    if (state.histories[allAssets[0]].length === 0) {
-        const startTime = Date.now() - 500 * interval;
-        allAssets.forEach(asset => {
-            let currentPrice = initialPricesUSD[asset];
-            for (let i = 0; i < 500; i++) {
-                currentPrice += (Math.random() - 0.5) * currentPrice * 0.001;
-                state.histories[asset].push({ t: startTime + i * interval, p: currentPrice });
+    cardListEl.addEventListener('click', (e) => {
+        if (e.target.classList.contains('card-action-btn')) {
+            const action = e.target.dataset.action;
+            const index = parseInt(e.target.dataset.index);
+            const input = cardListEl.querySelector(`input[data-action="${action}"][data-index="${index}"]`);
+            const amount = parseFloat(input.value);
+
+            if (isNaN(amount) || amount <= 0) return;
+
+            if (action === 'deposit') {
+                if (money >= amount) { money -= amount; bankData.cards[index].balance += amount; } 
+                else { alert('Uang tunai tidak cukup!'); }
+            } else if (action === 'withdraw') {
+                if (bankData.cards[index].balance >= amount) { bankData.cards[index].balance -= amount; money += amount; } 
+                else { alert('Saldo kartu tidak cukup!'); }
             }
-            state.prices[asset] = currentPrice;
+            input.value = '';
+            saveState();
+            updateUI();
+        }
+        if (e.target.classList.contains('card-action-btn-max')) {
+            const action = e.target.dataset.action;
+            const index = parseInt(e.target.dataset.index);
+
+            if (action === 'deposit-max') {
+                const input = cardListEl.querySelector(`input[data-action="deposit"][data-index="${index}"]`);
+                input.value = Math.floor(money);
+            } else if (action === 'withdraw-max') {
+                const input = cardListEl.querySelector(`input[data-action="withdraw"][data-index="${index}"]`);
+                input.value = Math.floor(bankData.cards[index].balance);
+            }
+        }
+    });
+    
+    // --- HUB LOGIC ---
+    function setupHub(platform) {
+        document.getElementById(`deposit-button-${platform}`).addEventListener('click', () => {
+            const amountInput = document.getElementById(`deposit-amount-${platform}`);
+            const amount = parseFloat(amountInput.value);
+            const storageKeyMap = { business: 'businessGameData', exchange: 'stockExchangeData', trading: 'tradingPlatformSaveData', crypto: 'cryptoExchangeData' };
+            const storageKey = storageKeyMap[platform];
+
+            if (isNaN(amount) || amount <= 0 || money < amount) return;
+            money -= amount;
+            let data = JSON.parse(localStorage.getItem(storageKey)) || { balance: 0 };
+            data.balance = (data.balance || 0) + amount;
+            localStorage.setItem(storageKey, JSON.stringify(data));
+            amountInput.value = '';
+            saveState();
+            updateUI();
+        });
+
+        document.getElementById(`withdraw-button-${platform}`).addEventListener('click', () => {
+            const amountInput = document.getElementById(`withdraw-amount-${platform}`);
+            const amount = parseFloat(amountInput.value);
+            const storageKeyMap = { business: 'businessGameData', exchange: 'stockExchangeData', trading: 'tradingPlatformSaveData', crypto: 'cryptoExchangeData' };
+            const storageKey = storageKeyMap[platform];
+            let data = JSON.parse(localStorage.getItem(storageKey)) || { balance: 0 };
+
+            if (isNaN(amount) || amount <= 0 || data.balance < amount) return;
+            data.balance -= amount;
+            money += amount;
+            localStorage.setItem(storageKey, JSON.stringify(data));
+            amountInput.value = '';
+            saveState();
+            updateUI();
+        });
+        
+        document.getElementById(`deposit-max-${platform}`).addEventListener('click', () => {
+            document.getElementById(`deposit-amount-${platform}`).value = Math.floor(money);
+        });
+
+        document.getElementById(`withdraw-max-${platform}`).addEventListener('click', () => {
+            const storageKeyMap = { business: 'businessGameData', exchange: 'stockExchangeData', trading: 'tradingPlatformSaveData', crypto: 'cryptoExchangeData' };
+            const storageKey = storageKeyMap[platform];
+            let data = JSON.parse(localStorage.getItem(storageKey)) || { balance: 0 };
+            document.getElementById(`withdraw-amount-${platform}`).value = Math.floor(data.balance);
         });
     }
-    
-    // Initial Indicator setup
-    Object.keys(state.activeIndicators).forEach(name => {
-        document.getElementById(`${name}Check`).checked = state.activeIndicators[name];
-        if (name === 'sma') chart.getDatasetMeta(1).hidden = !state.activeIndicators.sma;
-        if (name === 'bbands') {
-            chart.getDatasetMeta(2).hidden = !state.activeIndicators.bbands;
-            chart.getDatasetMeta(3).hidden = !state.activeIndicators.bbands;
-        }
+
+    // --- NAVIGATION ---
+    document.querySelectorAll('.nav-button').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+            document.getElementById(button.dataset.screen).classList.remove('hidden');
+            document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            updateUI();
+        });
     });
 
-    setInterval(gameLoop, interval);
-    updateDisplayAll();
-}
+    // --- INITIALIZATION ---
+    window.addEventListener('focus', loadState);
+    loadState();
+    setInterval(saveState, 5000);
+    
+    function getClickValue() { return 100; }
+    function getActiveUpgrades() { return {}; }
 
-document.addEventListener('DOMContentLoaded', init);
-</script>
+    clickButton.addEventListener('click', () => {
+        money += getClickValue();
+        updateUI();
+    });
+
+    setupHub('business');
+    setupHub('exchange');
+    setupHub('trading');
+    setupHub('crypto');
+    </script>
 </body>
-
 </html>
