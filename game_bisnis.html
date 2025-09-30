@@ -424,7 +424,50 @@
             container.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg h-full"><h2 class="text-2xl font-bold mb-4 text-teal-300">Panel Eksekusi (${gameState.installationQueue.length})</h2>${blockedWarning}<div class="space-y-2 max-h-60 overflow-y-auto pr-2 mt-2">${queueHTML}</div></div>`;
         }
         
-        function gameLoop() { /* ... unchanged ... */ }
+        function gameLoop() {
+            const now = Date.now();
+            gameState.constructionQueue = gameState.constructionQueue.filter(p => {
+                if (now >= p.endTime) {
+                    gameState.upgrades[p.id] = (gameState.upgrades[p.id] || 0) + 1;
+                    return false;
+                }
+                return true;
+            });
+            
+            const metrics = calculateMetrics();
+            gameState.balance += (gameState.revenue - gameState.opex) / 30;
+
+            if (Math.random() < 0.2) {
+                const marketAttraction = metrics.marketingPower * (metrics.satisfaction / 100);
+                const potentialNewCustomers = Math.floor(metrics.totalCoverage * (marketAttraction / 100) * 0.05);
+                if (potentialNewCustomers > 0 && gameState.servicePackages.length > 0) {
+                    for(let i = 0; i < potentialNewCustomers; i++) {
+                        if (gameState.leads.length < 20) {
+                            const randomPackage = gameState.servicePackages[Math.floor(Math.random() * gameState.servicePackages.length)];
+                            gameState.leads.push({ id: Date.now() + Math.random(), packageId: randomPackage.id });
+                        }
+                    }
+                }
+            }
+            
+            const churnRate = (100 - metrics.satisfaction) / 5000; 
+            Object.keys(gameState.customerDistribution).forEach(pkgId => {
+                if(gameState.customerDistribution[pkgId]){
+                    const churned = Math.floor(gameState.customerDistribution[pkgId] * churnRate);
+                    gameState.customerDistribution[pkgId] -= churned;
+                }
+            });
+            gameState.customers = Math.floor(Object.values(gameState.customerDistribution).reduce((a, b) => a + b, 0));
+            
+            // Only render dynamic parts in the main loop
+            renderHeaderStats();
+            renderCsPanel();
+            renderExecutionPanel();
+             if (gameState.constructionQueue.length > 0) {
+                renderUpgradePanel();
+            }
+        }
+
         function teamTaskLoop() { /* ... unchanged ... */ }
         
         document.body.addEventListener('click', e => {
