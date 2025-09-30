@@ -475,11 +475,17 @@
             const amount = parseFloat(amountInput.value);
             if (isNaN(amount) || amount <= 0) return alert('Jumlah penarikan tidak valid.');
             if (amount > gameState.balance) return alert('Kas operasional tidak mencukupi.');
+            
             gameState.balance -= amount;
+            
             const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
             localStorage.setItem('tycoonWithdrawal', tycoonWithdrawal + amount);
+            
             alert(`Dana sebesar ${formatNumber(amount)} berhasil ditarik ke kas utama Idle Tycoon.`);
             amountInput.value = '';
+
+            renderHeaderStats(); // Update UI immediately
+            saveState(); // Save state immediately
         });
         
         window.addEventListener('focus', () => {
