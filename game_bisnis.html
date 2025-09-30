@@ -471,11 +471,11 @@
             if (firstJob) {
                 const pkg = (firstJob.isB2B ? gameState.b2bServices : gameState.servicePackages).find(p => p.id === firstJob.packageId);
                 const speed = pkg ? pkg.speed : 0;
-                const newTotalCustomers = gameState.customers + (gameState.b2bCustomers || []).length + 1;
                 const newBandwidthUsage = metrics.bandwidthUsage + speed;
 
-                if (newTotalCustomers > metrics.totalCapacity) {
-                    blockedWarning = `<div class="text-center text-xs text-yellow-400 bg-yellow-900/50 p-2 rounded-lg">Instalasi terhenti. Kapasitas pelanggan tidak cukup.</div>`;
+                // Bug Fix: Only check B2C customers against B2C capacity
+                if (!firstJob.isB2B && (gameState.customers + 1) > metrics.totalCapacity) {
+                    blockedWarning = `<div class="text-center text-xs text-yellow-400 bg-yellow-900/50 p-2 rounded-lg">Instalasi terhenti. Kapasitas pelanggan B2C tidak cukup.</div>`;
                     isBlocked = true;
                 } else if (newBandwidthUsage > (metrics.totalIIX + metrics.totalIX)) {
                      blockedWarning = `<div class="text-center text-xs text-yellow-400 bg-yellow-900/50 p-2 rounded-lg">Instalasi terhenti. Bandwidth transit tidak cukup.</div>`;
@@ -570,9 +570,9 @@
                     const pkg = serviceCollection.find(p => p.id === job.packageId);
                     if (!pkg) continue;
 
-                    const newTotalCustomers = currentMetrics.totalCustomers + 1;
                     const newBandwidthUsage = currentMetrics.bandwidthUsage + pkg.speed;
-                    const hasPhysicalCapacity = newTotalCustomers <= currentMetrics.totalCapacity;
+                    // Bug Fix: Only check B2C customer count against physical capacity. B2B is assumed to have dedicated capacity.
+                    const hasPhysicalCapacity = job.isB2B ? true : (gameState.customers + 1) <= currentMetrics.totalCapacity;
                     const hasBandwidthCapacity = newBandwidthUsage <= (currentMetrics.totalIIX + currentMetrics.totalIX);
                     const hasMetroCapacity = newBandwidthUsage <= currentMetrics.totalMetroCapacity;
 
@@ -715,7 +715,8 @@
                 
                 const collection = type === 'b2c' ? gameState.servicePackages : gameState.b2bServices;
                 const item = collection.find(p => p.id === id);
-                if (item && !isNaN(value)) {
+                // Bug Fix: Allow string for 'name' field, while still validating numbers for other fields
+                if (item && (field === 'name' || !isNaN(value))) {
                     item[field] = value;
                 }
             }
@@ -753,11 +754,11 @@
             if (event.key === 'businessGameData') { loadState(); renderAll(); }
         });
         document.getElementById('reset-btn').addEventListener('click', () => {
-            if (confirm('Apakah Anda yakin ingin mereset seluruh kemajuan di game ini? Aksi ini tidak bisa dibatalkan.')) {
-                localStorage.removeItem('businessGameData');
-                showToast('Game telah direset. Memuat ulang...', 'info');
-                setTimeout(() => { location.reload(); }, 1500);
-            }
+            // Bug Fix: Removed confirm() as it's not supported in some execution environments.
+            // A custom modal would be a better long-term solution for confirmation.
+            localStorage.removeItem('businessGameData');
+            showToast('Game telah direset. Memuat ulang...', 'info');
+            setTimeout(() => { location.reload(); }, 1500);
         });
 
         // --- INIT & LOOP ---
@@ -769,3 +770,4 @@
     </script>
 </body>
 </html>
+
