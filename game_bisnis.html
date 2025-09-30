@@ -56,19 +56,19 @@
         
         const upgrades = {
             // INFRASTRUKTUR INTI
-            ip_transit: { name: "Sewa IP Transit", icon: "🌐", baseCost: 5000000, opex: 2000000, effects: { bandwidth: 1000 }, description: "Menyewa bandwidth inti dari provider Tier-1." },
-            pop: { name: "Bangun Point of Presence (POP)", icon: "🏢", baseCost: 25000000, opex: 1000000, effects: { pop: 1 }, description: "Membangun pusat kendali jaringan di sebuah kota." },
+            ip_transit: { category: 'infrastruktur', name: "Sewa IP Transit", icon: "🌐", baseCost: 5000000, opex: 2000000, effects: { bandwidth: 1000 }, description: "Menyewa bandwidth inti dari provider Tier-1." },
+            pop: { category: 'infrastruktur', name: "Bangun Point of Presence (POP)", icon: "🏢", baseCost: 25000000, opex: 1000000, effects: { pop: 1 }, description: "Membangun pusat kendali jaringan di sebuah kota." },
             
             // INFRASTRUKTUR LAST-MILE
-            bts: { name: "Pasang Menara BTS (Wireless)", icon: "📡", baseCost: 7500000, opex: 300000, effects: { coverage: 250, capacity: 200 }, description: "Menjangkau pelanggan via nirkabel, cepat tapi kapasitas terbatas." },
-            ftth: { name: "Gelar Jaringan Fiber (FTTH)", icon: "🧵", baseCost: 20000000, opex: 500000, effects: { coverage: 150, capacity: 500, satisfaction: 5 }, description: "Menjangkau pelanggan via fiber, mahal tapi kapasitas besar & stabil." },
+            bts: { category: 'infrastruktur', name: "Pasang Menara BTS (Wireless)", icon: "📡", baseCost: 7500000, opex: 300000, effects: { coverage: 250, capacity: 200 }, description: "Menjangkau pelanggan via nirkabel, cepat tapi kapasitas terbatas." },
+            ftth: { category: 'infrastruktur', name: "Gelar Jaringan Fiber (FTTH)", icon: "🧵", baseCost: 20000000, opex: 500000, effects: { coverage: 150, capacity: 500, satisfaction: 5 }, description: "Menjangkau pelanggan via fiber, mahal tapi kapasitas besar & stabil." },
 
             // OPERASIONAL
-            teknisi: { name: "Rekrut Teknisi Lapangan", icon: "👨‍🔧", baseCost: 1000000, opex: 3000000, effects: { satisfaction: 2 }, description: "Mempercepat perbaikan dan instalasi baru." },
-            cs: { name: "Bentuk Tim Customer Service", icon: "📞", baseCost: 2000000, opex: 1500000, effects: { satisfaction: 3, marketing: 0.1 }, description: "Meningkatkan kepuasan dan retensi pelanggan." },
+            teknisi: { category: 'operasional', name: "Rekrut Teknisi Lapangan", icon: "👨‍🔧", baseCost: 1000000, opex: 3000000, effects: { satisfaction: 2 }, description: "Mempercepat perbaikan dan instalasi baru." },
+            cs: { category: 'operasional', name: "Bentuk Tim Customer Service", icon: "📞", baseCost: 2000000, opex: 1500000, effects: { satisfaction: 3, marketing: 0.1 }, description: "Meningkatkan kepuasan dan retensi pelanggan." },
             
             // PEMASARAN
-            marketing_local: { name: "Kampanye Marketing Lokal", icon: "📰", baseCost: 500000, opex: 200000, effects: { marketing: 1 }, description: "Meningkatkan akuisisi pelanggan di area jangkauan." },
+            marketing_local: { category: 'pemasaran', name: "Kampanye Marketing Lokal", icon: "📰", baseCost: 500000, opex: 200000, effects: { marketing: 1 }, description: "Meningkatkan akuisisi pelanggan di area jangkauan." },
         };
 
         const servicePackages = [
