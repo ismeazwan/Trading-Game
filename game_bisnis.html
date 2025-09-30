@@ -151,8 +151,14 @@
                 try {
                     parsedData = JSON.parse(savedData);
                     gameState = { ...cleanState, ...parsedData, balance: parsedData.balance || 0 };
-                } catch(e) { resetGame(); parsedData = gameState; }
-            } else { resetGame(); parsedData = gameState; }
+                } catch(e) { 
+                    resetGame(); 
+                    parsedData = gameState; // FIX: Ensure parsedData is assigned after reset
+                }
+            } else { 
+                resetGame(); 
+                parsedData = gameState; // FIX: Ensure parsedData is assigned after reset
+            }
             
             const freshDistribution = {};
             gameState.servicePackages.forEach(pkg => {
