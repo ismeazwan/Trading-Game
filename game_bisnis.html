@@ -123,7 +123,7 @@
         }
 
         function loadState() {
-            const savedData = localStorage.getItem('ispGameData');
+            const savedData = localStorage.getItem('businessGameData');
             if (savedData) {
                 const parsedData = JSON.parse(savedData);
                 // Merge saved data with a clean structure to avoid errors with old save files
@@ -143,7 +143,10 @@
         }
 
         function saveState() {
-            localStorage.setItem('ispGameData', JSON.stringify(gameState));
+            // Before saving, ensure the balance in localStorage is consistent with the game's state
+            let data = JSON.parse(localStorage.getItem('businessGameData')) || {};
+            data = {...data, ...gameState};
+            localStorage.setItem('businessGameData', JSON.stringify(data));
         }
 
         function getUpgradeLevel(id) {
@@ -332,9 +335,18 @@
             render();
         });
         
+        // This listener syncs data when the tab gets focus
         window.addEventListener('focus', () => {
             loadState();
             render();
+        });
+
+        // This listener syncs data instantly when another tab changes it
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'businessGameData') {
+                loadState();
+                render();
+            }
         });
 
         // --- INIT & LOOP ---
