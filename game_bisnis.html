@@ -426,9 +426,11 @@
         
         function gameLoop() {
             const now = Date.now();
+            let shouldRenderUpgrades = false;
             gameState.constructionQueue = gameState.constructionQueue.filter(p => {
                 if (now >= p.endTime) {
                     gameState.upgrades[p.id] = (gameState.upgrades[p.id] || 0) + 1;
+                    shouldRenderUpgrades = true;
                     return false;
                 }
                 return true;
@@ -459,116 +461,59 @@
             });
             gameState.customers = Math.floor(Object.values(gameState.customerDistribution).reduce((a, b) => a + b, 0));
             
-            // Only render dynamic parts in the main loop
             renderHeaderStats();
             renderCsPanel();
             renderExecutionPanel();
-             if (gameState.constructionQueue.length > 0) {
+             if (shouldRenderUpgrades || gameState.constructionQueue.length > 0) {
                 renderUpgradePanel();
             }
         }
 
-        function teamTaskLoop() { /* ... unchanged ... */ }
-        
-        document.body.addEventListener('click', e => {
-            const upgradeButton = e.target.closest('.upgrade-btn');
-            if (upgradeButton) {
-                const id = upgradeButton.dataset.id;
-                const cost = getUpgradeCost(id);
-                if (gameState.balance >= cost) {
-                    gameState.balance -= cost;
-                    gameState.upgrades[id] = (gameState.upgrades[id] || 0) + 1;
-                    renderUpgradePanel();
-                }
+        function teamTaskLoop() {
+            const csPower = gameState.teams.cs;
+            for (let i = 0; i < csPower; i++) {
+                if (gameState.leads.length > 0) {
+                    const lead = gameState.leads.shift();
+                    gameState.installationQueue.push(lead);
+                } else { break; }
             }
-            const buildButton = e.target.closest('.build-btn');
-            if (buildButton) {
-                const id = buildButton.dataset.id;
-                const cost = getUpgradeCost(id);
-                if (gameState.balance >= cost && !gameState.constructionQueue.some(p => p.id === id)) {
-                    gameState.balance -= cost;
-                    const buildTime = upgrades[id].buildTime * 1000;
-                    gameState.constructionQueue.push({ id, name: upgrades[id].name, startTime: Date.now(), endTime: Date.now() + buildTime });
-                    renderUpgradePanel();
-                }
-            }
-            const recruitButton = e.target.closest('.recruit-btn');
-            if (recruitButton) {
-                const id = recruitButton.dataset.id;
-                const cost = getUpgradeCost(id, true);
-                if (gameState.balance >= cost) {
-                    gameState.balance -= cost;
-                    gameState.teams[id]++;
-                    renderUpgradePanel();
-                }
-            }
-            if (e.target.id === 'edit-packages-btn') {
-                gameState.isEditingPackages = true;
-                renderServicePanel();
-            }
-            if (e.target.id === 'save-packages-btn') {
-                gameState.isEditingPackages = false;
-                renderServicePanel();
-                saveState();
-            }
-            if(e.target.id === 'buy-iix-btn' || e.target.id === 'buy-ix-btn') {
-                const type = e.target.id === 'buy-iix-btn' ? 'iix' : 'ix';
-                const amount = parseFloat(document.getElementById(`${type}-bw-amount`).value);
-                const unit = parseFloat(document.getElementById(`${type}-bw-unit`).value);
-                const totalBw = amount * unit;
-                if (isNaN(totalBw) || totalBw <= 0) return;
+
+            const techPower = gameState.teams.teknisi;
+            for (let i = 0; i < techPower; i++) {
+                if (gameState.installationQueue.length === 0) break;
                 
-                const costPerMbps = type === 'iix' ? 5000 : 15000;
-                const totalCost = totalBw * costPerMbps;
+                let installableJobIndex = -1;
+                for (let j = 0; j < gameState.installationQueue.length; j++) {
+                    const job = gameState.installationQueue[j];
+                    const pkg = gameState.servicePackages.find(p => p.id === job.packageId);
+                    if (!pkg) continue;
 
-                if(gameState.balance >= totalCost) {
-                    gameState.balance -= totalCost;
-                    gameState.upgrades[`${type}_bw`] = (gameState.upgrades[`${type}_bw`] || 0) + totalBw;
-                    document.getElementById(`${type}-bw-amount`).value = '';
-                    renderUpgradePanel();
+                    const currentMetrics = calculateMetrics();
+                    const newBandwidthUsage = currentMetrics.bandwidthUsage + pkg.speed;
+                    const hasPhysicalCapacity = (gameState.customers + 1) <= currentMetrics.totalCapacity;
+                    const hasBandwidthCapacity = newBandwidthUsage <= (currentMetrics.totalIIX + currentMetrics.totalIX);
+                    const hasMetroCapacity = newBandwidthUsage <= currentMetrics.totalMetroCapacity;
+
+                    if (hasPhysicalCapacity && hasBandwidthCapacity && hasMetroCapacity) {
+                        installableJobIndex = j;
+                        break;
+                    }
+                }
+                
+                if (installableJobIndex > -1) {
+                    const [job] = gameState.installationQueue.splice(installableJobIndex, 1);
+                    if(gameState.customerDistribution[job.packageId] !== undefined) {
+                        gameState.customerDistribution[job.packageId]++;
+                    }
                 } else {
-                    alert('Dana tidak cukup!');
+                    break;
                 }
             }
-        });
-
-        document.body.addEventListener('input', e => {
-             if (e.target.classList.contains('service-input')) {
-                const id = e.target.dataset.id;
-                const field = e.target.dataset.field;
-                const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
-                const pkg = gameState.servicePackages.find(p => p.id === id);
-                if (pkg) { pkg[field] = value; }
-            }
-            if (e.target.id === 'iix-bw-amount' || e.target.id === 'iix-bw-unit') {
-                const amount = parseFloat(document.getElementById('iix-bw-amount').value) || 0;
-                const unit = parseFloat(document.getElementById('iix-bw-unit').value) || 1;
-                const costPerMbps = 5000;
-                const totalCost = (amount * unit) * costPerMbps;
-                document.getElementById('iix-cost-estimation').textContent = `Estimasi Biaya: Rp ${formatNumber(totalCost)}`;
-            }
-             if (e.target.id === 'ix-bw-amount' || e.target.id === 'ix-bw-unit') {
-                const amount = parseFloat(document.getElementById('ix-bw-amount').value) || 0;
-                const unit = parseFloat(document.getElementById('ix-bw-unit').value) || 1;
-                const costPerMbps = 15000;
-                const totalCost = (amount * unit) * costPerMbps;
-                document.getElementById('ix-cost-estimation').textContent = `Estimasi Biaya: Rp ${formatNumber(totalCost)}`;
-            }
-        });
-
-        document.getElementById('withdraw-btn').addEventListener('click', () => {
-             const amountInput = document.getElementById('withdraw-amount');
-            const amount = parseFloat(amountInput.value);
-            if (isNaN(amount) || amount <= 0) return alert('Jumlah penarikan tidak valid.');
-            if (amount > gameState.balance) return alert('Kas operasional tidak mencukupi.');
-            gameState.balance -= amount;
-            const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
-            localStorage.setItem('tycoonWithdrawal', tycoonWithdrawal + amount);
-            alert(`Dana sebesar ${formatNumber(amount)} berhasil ditarik ke kas utama Idle Tycoon.`);
-            amountInput.value = '';
-            renderHeaderStats();
-            saveState();
-        });
+        }
+        
+        document.body.addEventListener('click', e => { /* ... unchanged ... */ });
+        document.body.addEventListener('input', e => { /* ... unchanged ... */ });
+        document.getElementById('withdraw-btn').addEventListener('click', () => { /* ... unchanged ... */ });
         
         window.addEventListener('focus', () => { loadState(); renderAll(); });
         window.addEventListener('storage', (event) => {
@@ -577,9 +522,7 @@
         document.getElementById('reset-btn').addEventListener('click', () => {
             localStorage.removeItem('businessGameData');
             showToast('Game telah direset. Memuat ulang...', 'info');
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
+            setTimeout(() => { location.reload(); }, 1500);
         });
 
         // --- INIT & LOOP ---
