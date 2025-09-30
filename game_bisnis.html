@@ -307,10 +307,15 @@
             netIncomeEl.textContent = "Rp " + formatNumber(netIncome);
             netIncomeEl.className = `text-lg md:text-2xl font-bold ${netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`;
             document.getElementById('customers').textContent = formatNumber(totalCustomers);
-            const capacityInfo = getBandwidthUnit(metrics.bandwidthUsage);
-            const formattedUsage = (metrics.bandwidthUsage / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
-            const formattedTotal = ((metrics.totalIIX + metrics.totalIX) / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
-            document.getElementById('capacity').innerHTML = `${formattedUsage} / ${formattedTotal} <span class="text-xs">${capacityInfo.unit}</span>`;
+            
+            // Perbaikan logika unit bandwidth
+            const totalBandwidth = metrics.totalIIX + metrics.totalIX;
+            const displayUnitInfo = getBandwidthUnit(Math.max(metrics.bandwidthUsage, totalBandwidth));
+            
+            const formattedUsage = (metrics.bandwidthUsage / displayUnitInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+            const formattedTotal = (totalBandwidth / displayUnitInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+
+            document.getElementById('capacity').innerHTML = `${formattedUsage} / ${formattedTotal} <span class="text-xs">${displayUnitInfo.unit}</span>`;
             document.getElementById('satisfaction').textContent = metrics.satisfaction.toFixed(1) + "%";
         }
 
@@ -770,4 +775,5 @@
     </script>
 </body>
 </html>
+
 
