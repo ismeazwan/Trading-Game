@@ -9,17 +9,34 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .progress-bar-fill { transition: width 0.5s ease-in-out; }
+        .toast {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            transition: bottom 0.5s ease-in-out;
+            font-size: 0.9rem;
+        }
+        .toast.show { bottom: 20px; }
+        .toast.info { background-color: #3b82f6; }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
-
+    <div id="toast-container"></div>
     <div class="container mx-auto p-2 md:p-4 max-w-7xl">
         <header class="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap justify-between items-center shadow-lg gap-4">
             <div>
                 <h1 id="company-name-header" class="text-xl md:text-2xl font-bold">Mulai Bisnis ISP Anda</h1>
                 <p id="company-stage-header" class="text-sm text-purple-400">Tahap Awal</p>
             </div>
-            <a href="index.html" class="text-sm text-yellow-400 hover:underline order-first md:order-none w-full md:w-auto text-center md:text-left">&larr; Kembali ke Idle Tycoon</a>
+            <div class="flex items-center gap-4 order-first md:order-none w-full md:w-auto justify-center">
+                 <a href="index.html" class="text-sm text-yellow-400 hover:underline"> Kembali ke Idle Tycoon</a>
+                 <button id="reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded text-xs">Reset Game</button>
+            </div>
         </header>
 
         <!-- Main Stats Panel -->
@@ -87,6 +104,19 @@
         };
 
         let gameState = {};
+
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
 
         function formatNumber(num) {
             if (isNaN(num)) return '0';
@@ -278,68 +308,23 @@
                     const cost = getUpgradeCost(id);
                     const canAfford = gameState.balance >= cost;
                     const inConstruction = gameState.constructionQueue.find(p => p.id === id);
-
                     if (inConstruction) {
                         const progress = ((Date.now() - inConstruction.startTime) / (inConstruction.endTime - inConstruction.startTime)) * 100;
                         const timeLeft = Math.max(0, Math.ceil((inConstruction.endTime - Date.now()) / 1000));
-                        html = `
-                            <div class="bg-gray-700 p-4 rounded-lg">
-                                <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
-                                <p class="text-xs text-gray-400 mt-1 mb-3">Sedang dibangun... Sisa waktu: ${timeLeft}d</p>
-                                <div class="w-full bg-gray-800 rounded-full h-4">
-                                    <div class="bg-green-500 h-4 rounded-full progress-bar-fill" style="width: ${progress}%"></div>
-                                </div>
-                            </div>`;
+                        html = `<div class="bg-gray-700 p-4 rounded-lg"><p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p><p class="text-xs text-gray-400 mt-1 mb-3">Sedang dibangun... Sisa waktu: ${timeLeft}d</p><div class="w-full bg-gray-800 rounded-full h-4"><div class="bg-green-500 h-4 rounded-full progress-bar-fill" style="width: ${progress}%"></div></div></div>`;
                     } else {
-                        html = `
-                            <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
-                                <div>
-                                    <div class="flex justify-between items-start">
-                                        <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
-                                        <p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Jml: ${level}</p>
-                                    </div>
-                                    <p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p>
-                                </div>
-                                <button class="build-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
-                                    Bangun (${formatNumber(cost)})
-                                </button>
-                            </div>`;
+                        html = `<div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between"><div><div class="flex justify-between items-start"><p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p><p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Jml: ${level}</p></div><p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p></div><button class="build-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>Bangun (${formatNumber(cost)})</button></div>`;
                     }
                 } else if (upgrade.category === 'operasional') {
                     const count = gameState.teams[id];
                     const cost = getUpgradeCost(id, true);
                     const canAfford = gameState.balance >= cost;
-                    html = `
-                        <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
-                            <div>
-                                <div class="flex justify-between items-start">
-                                    <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
-                                    <p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Tim: ${count}</p>
-                                </div>
-                                <p class="text-xs text-gray-400 mt-1">Gaji Bulanan: ${formatNumber(upgrade.opex * count)}</p>
-                                <p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p>
-                            </div>
-                            <button class="recruit-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
-                                Rekrut (${formatNumber(cost)})
-                            </button>
-                        </div>`;
-                } else { // Pemasaran
+                    html = `<div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between"><div><div class="flex justify-between items-start"><p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p><p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Tim: ${count}</p></div><p class="text-xs text-gray-400 mt-1">Gaji Bulanan: ${formatNumber(upgrade.opex * count)}</p><p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p></div><button class="recruit-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>Rekrut (${formatNumber(cost)})</button></div>`;
+                } else {
                     const level = getUpgradeLevel(id);
                     const cost = getUpgradeCost(id);
                     const canAfford = gameState.balance >= cost;
-                    html = `
-                        <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
-                            <div>
-                                <div class="flex justify-between items-start">
-                                    <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
-                                    <p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Lv. ${level}</p>
-                                </div>
-                                <p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p>
-                            </div>
-                            <button class="upgrade-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
-                                Upgrade (${formatNumber(cost)})
-                            </button>
-                        </div>`;
+                    html = `<div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between"><div><div class="flex justify-between items-start"><p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p><p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Lv. ${level}</p></div><p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p></div><button class="upgrade-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>Upgrade (${formatNumber(cost)})</button></div>`;
                 }
                 if (categories[upgrade.category] !== undefined) {
                     categories[upgrade.category] += html;
@@ -362,10 +347,83 @@
                     </div>
                 </div>`;
         }
+        function renderServicePanel() {
+            const container = document.getElementById('service-panel-container');
+            let packagesHTML = '';
+            let actionButtonHTML = '';
 
-        function renderServicePanel() { /* ... unchanged ... */ }
-        function renderCsPanel() { /* ... unchanged ... */ }
-        function renderExecutionPanel() { /* ... unchanged ... */ }
+            if (gameState.isEditingPackages) {
+                packagesHTML = gameState.servicePackages.map(pkg => `
+                    <div class="bg-gray-700 p-3 rounded-lg">
+                        <input type="text" value="${pkg.name}" class="bg-gray-800 p-2 rounded w-full mb-2 service-input" data-id="${pkg.id}" data-field="name" placeholder="Nama Paket">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-400">Kecepatan (Mbps)</label>
+                                <input type="number" value="${pkg.speed}" class="w-full bg-gray-800 p-2 rounded service-input" data-id="${pkg.id}" data-field="speed">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Harga (Rp)</label>
+                                <input type="number" value="${pkg.price}" class="w-full bg-gray-800 p-2 rounded service-input" data-id="${pkg.id}" data-field="price">
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                actionButtonHTML = `<button id="save-packages-btn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 font-bold py-2 px-4 rounded">Simpan</button>`;
+            } else {
+                packagesHTML = gameState.servicePackages.map(pkg => `
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="font-bold text-lg">${pkg.name}</p>
+                        <div class="flex justify-between items-center mt-2 text-sm">
+                            <p class="text-gray-400">Speed: <span class="font-semibold text-white">${pkg.speed} Mbps</span></p>
+                            <p class="text-gray-400">Harga: <span class="font-semibold text-white">Rp ${formatNumber(pkg.price)}</span></p>
+                        </div>
+                    </div>
+                `).join('');
+                actionButtonHTML = `<button id="edit-packages-btn" class="w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600 font-bold py-2 px-4 rounded">Ubah</button>`;
+            }
+
+            container.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <h2 class="text-2xl font-bold text-orange-300">Panel Layanan Internet</h2>
+                        ${actionButtonHTML}
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${packagesHTML}
+                    </div>
+                </div>`;
+        }
+        
+        function renderCsPanel() {
+            const container = document.getElementById('cs-panel-container');
+            let leadsHTML = `<p class="text-gray-500 text-center">Tidak ada permintaan.</p>`;
+            if(gameState.leads.length > 0) {
+                leadsHTML = gameState.leads.map(lead => `<div class="bg-gray-700 p-3 rounded-lg"><p class="font-semibold">${(gameState.servicePackages.find(p=>p.id===lead.packageId) || {name: 'N/A'}).name}</p></div>`).join('');
+            }
+            container.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg h-full"><h2 class="text-2xl font-bold mb-4 text-blue-300">Panel CS (${gameState.leads.length})</h2><div class="space-y-2 max-h-60 overflow-y-auto pr-2">${leadsHTML}</div></div>`;
+        }
+
+        function renderExecutionPanel() {
+             const container = document.getElementById('execution-panel-container');
+            let queueHTML = `<p class="text-gray-500 text-center">Tidak ada jadwal.</p>`;
+            let blockedWarning = '';
+
+            const metrics = calculateMetrics();
+            const firstJob = gameState.installationQueue[0];
+            const isBlocked = firstJob && 
+                              (gameState.customers >= metrics.totalCapacity || 
+                               (metrics.bandwidthUsage + (gameState.servicePackages.find(p => p.id === firstJob.packageId)?.speed || 0)) > (metrics.totalIIX + metrics.totalIX) ||
+                               (metrics.bandwidthUsage + (gameState.servicePackages.find(p => p.id === firstJob.packageId)?.speed || 0)) > metrics.totalMetroCapacity);
+
+            if (isBlocked) {
+                blockedWarning = `<div class="text-center text-xs text-yellow-400 bg-yellow-900/50 p-2 rounded-lg">Instalasi terhenti. Kapasitas jaringan atau jangkauan tidak mencukupi.</div>`;
+            }
+            if(gameState.installationQueue.length > 0) {
+                queueHTML = gameState.installationQueue.map(job => `<div class="bg-gray-700 p-3 rounded-lg"><p class="font-semibold">Instalasi ${(gameState.servicePackages.find(p=>p.id===job.packageId) || {name: 'N/A'}).name}</p></div>`).join('');
+            }
+            container.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg h-full"><h2 class="text-2xl font-bold mb-4 text-teal-300">Panel Eksekusi (${gameState.installationQueue.length})</h2>${blockedWarning}<div class="space-y-2 max-h-60 overflow-y-auto pr-2 mt-2">${queueHTML}</div></div>`;
+        }
+        
         function gameLoop() { /* ... unchanged ... */ }
         function teamTaskLoop() { /* ... unchanged ... */ }
         
@@ -472,6 +530,13 @@
         window.addEventListener('focus', () => { loadState(); renderAll(); });
         window.addEventListener('storage', (event) => {
             if (event.key === 'businessGameData') { loadState(); renderAll(); }
+        });
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            localStorage.removeItem('businessGameData');
+            showToast('Game telah direset. Memuat ulang...', 'info');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
         });
 
         // --- INIT & LOOP ---
