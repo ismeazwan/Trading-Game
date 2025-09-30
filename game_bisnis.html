@@ -103,6 +103,13 @@
             return value.toFixed(2).replace(/\.0+$/, '').replace(/\.$/, '') + suffixes[i];
         }
 
+        function getBandwidthUnit(mbps) {
+            if (isNaN(mbps) || mbps < 1000) return { divisor: 1, unit: 'Mbps' };
+            if (mbps < 1000 * 1000) return { divisor: 1000, unit: 'Gbps' };
+            if (mbps < 1000 * 1000 * 1000) return { divisor: 1000 * 1000, unit: 'Tbps' };
+            return { divisor: 1000 * 1000 * 1000, unit: 'Pbps' };
+        }
+
         function resetGame() {
              gameState = {
                 companyName: "Nusantara Net",
@@ -116,7 +123,7 @@
         }
 
         function loadState() {
-            const savedData = localStorage.getItem('businessGameData');
+            const savedData = localStorage.getItem('ispGameData');
             if (savedData) {
                 const parsedData = JSON.parse(savedData);
                 // Merge saved data with a clean structure to avoid errors with old save files
@@ -136,7 +143,7 @@
         }
 
         function saveState() {
-            localStorage.setItem('businessGameData', JSON.stringify(gameState));
+            localStorage.setItem('ispGameData', JSON.stringify(gameState));
         }
 
         function getUpgradeLevel(id) {
@@ -202,7 +209,12 @@
             netIncomeEl.className = `text-lg md:text-2xl font-bold ${netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`;
             
             document.getElementById('customers').textContent = formatNumber(gameState.customers);
-            document.getElementById('capacity').innerHTML = `${formatNumber(metrics.bandwidthUsage)} / ${formatNumber(metrics.totalBandwidth)} <span class="text-xs">Mbps</span>`;
+            
+            const capacityInfo = getBandwidthUnit(metrics.totalBandwidth);
+            const formattedUsage = (metrics.bandwidthUsage / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+            const formattedTotal = (metrics.totalBandwidth / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+            document.getElementById('capacity').innerHTML = `${formattedUsage} / ${formattedTotal} <span class="text-xs">${capacityInfo.unit}</span>`;
+
             document.getElementById('satisfaction').textContent = metrics.satisfaction.toFixed(1) + "%";
             
             // Render Upgrade Panels
