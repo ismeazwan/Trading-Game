@@ -61,6 +61,7 @@
     <script>
         const AUCTION_INTERVAL = 5 * 60 * 1000; // 5 menit
         const ITEM_DURATION = 1 * 60 * 1000;   // 1 menit
+        const RESULT_DISPLAY_DURATION = 4000; // 4 detik
 
         let auctionState = {
             balance: 0,
@@ -69,7 +70,7 @@
             isSessionActive: false,
             auctionQueue: [],
             currentItem: null,
-            lastResult: null // Untuk menampilkan hasil lelang terakhir
+            lastResult: null 
         };
 
         const availableItems = {
@@ -145,6 +146,7 @@
         }
 
         function startNextItemAuction() {
+            auctionState.lastResult = null;
             if (auctionState.auctionQueue.length === 0) {
                 endAuctionSession();
                 return;
@@ -182,29 +184,19 @@
                 name: item.name,
                 icon: item.icon,
                 winner: item.highestBidder,
-                winningBid: item.currentBid
+                winningBid: item.currentBid,
+                displayUntil: Date.now() + RESULT_DISPLAY_DURATION
             };
 
             auctionState.currentItem = null;
             saveState();
-
-            const nextAction = auctionState.auctionQueue.length > 0 
-                ? startNextItemAuction 
-                : endAuctionSession;
-
-            setTimeout(() => {
-                auctionState.lastResult = null;
-                nextAction();
-            }, 4000); // Jeda 4 detik untuk menampilkan hasil
         }
 
         function endAuctionSession() {
             auctionState.isSessionActive = false;
             auctionState.currentItem = null;
             auctionState.nextSessionTime = Date.now() + AUCTION_INTERVAL;
-            if (!auctionState.lastResult) {
-                showToast("Sesi lelang berakhir. Sesi berikutnya dalam 5 menit.", 'info');
-            }
+            showToast("Sesi lelang berakhir. Sesi berikutnya dalam 5 menit.", 'info');
         }
 
         function renderStatus() {
@@ -227,8 +219,6 @@
                     </div>`;
                 } else if (auctionState.lastResult) {
                     currentItemStatusHTML = '<p>Menampilkan hasil lelang...</p>';
-                } else if (auctionState.auctionQueue.length > 0) {
-                    currentItemStatusHTML = '<p>Mempersiapkan barang berikutnya...</p>';
                 }
 
                 statusEl.innerHTML = `
@@ -382,13 +372,26 @@
 
         function gameLoop() {
             const now = Date.now();
-            if (!auctionState.isSessionActive && now >= auctionState.nextSessionTime) {
+            
+            // State transition: From result display to next state
+            if (auctionState.lastResult && now >= auctionState.lastResult.displayUntil) {
+                if (auctionState.auctionQueue.length > 0) {
+                    startNextItemAuction();
+                } else {
+                    endAuctionSession();
+                }
+            }
+            
+            // State transition: Start a new session
+            if (!auctionState.isSessionActive && !auctionState.lastResult && now >= auctionState.nextSessionTime) {
                 startAuctionSession();
             }
 
+            // State transition: End an item auction
             if(auctionState.isSessionActive && auctionState.currentItem && now >= auctionState.currentItem.endTime) {
                 endCurrentItemAuction();
             }
+            
             renderAll();
         }
 
