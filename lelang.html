@@ -223,7 +223,12 @@
                     
                     <div class="mt-4">
                         <label for="bid-amount" class="block text-sm font-medium text-gray-300">Jumlah Tawaran Anda:</label>
-                        <input type="number" id="bid-amount" class="w-full bg-gray-800 p-2 rounded mt-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="${formatCurrency(item.currentBid * 1.05)}">
+                        <input type="number" id="bid-amount" class="w-full bg-gray-800 p-2 rounded mt-1 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Masukkan jumlah tawaran">
+                        <div class="flex space-x-2 mt-2">
+                            <button class="quick-bid-btn flex-1 bg-gray-600 hover:bg-gray-500 text-xs font-bold py-1 px-2 rounded" data-type="min">Tawaran Min</button>
+                            <button class="quick-bid-btn flex-1 bg-gray-600 hover:bg-gray-500 text-xs font-bold py-1 px-2 rounded" data-type="percent" data-value="0.05">+5%</button>
+                            <button class="quick-bid-btn flex-1 bg-gray-600 hover:bg-gray-500 text-xs font-bold py-1 px-2 rounded" data-type="percent" data-value="0.10">+10%</button>
+                        </div>
                         <button id="place-bid-btn" class="w-full mt-2 font-bold py-3 px-4 rounded transition-colors ${!canAffordNextBid || remainingMs <= 0 ? 'bg-gray-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}" ${!canAffordNextBid || remainingMs <= 0 ? 'disabled' : ''}>
                             ${remainingMs > 0 ? 'Ajukan Tawaran' : 'Lelang Berakhir'}
                         </button>
@@ -232,6 +237,28 @@
             `;
         }
         
+        function handleQuickBid(type, value) {
+            const item = auctionState.currentItem;
+            if (!item) return;
+
+            const bidInput = document.getElementById('bid-amount');
+            if (!bidInput) return;
+
+            const currentBid = item.currentBid;
+            let newBid = 0;
+            
+            const minIncrement = Math.max(1000, currentBid * 0.01);
+
+            if (type === 'min') {
+                newBid = currentBid + minIncrement;
+            } else if (type === 'percent') {
+                const percent = parseFloat(value);
+                newBid = currentBid * (1 + percent);
+            }
+            
+            bidInput.value = Math.ceil(newBid / 1000) * 1000;
+        }
+
         function handleBid() {
             const item = auctionState.currentItem;
             if (!item) return;
@@ -276,6 +303,11 @@
         document.getElementById('main-content').addEventListener('click', (e) => {
             if (e.target.id === 'place-bid-btn') {
                 handleBid();
+            }
+            const quickBidBtn = e.target.closest('.quick-bid-btn');
+            if (quickBidBtn) {
+                e.preventDefault();
+                handleQuickBid(quickBidBtn.dataset.type, quickBidBtn.dataset.value);
             }
         });
 
