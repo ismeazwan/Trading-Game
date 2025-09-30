@@ -191,21 +191,12 @@
                 name: item.name,
                 icon: item.icon,
                 winner: item.highestBidder,
-                winningBid: item.currentBid
+                winningBid: item.currentBid,
+                displayUntil: Date.now() + RESULT_DISPLAY_DURATION
             };
 
             auctionState.currentItem = null;
             saveState();
-            
-            // Explicitly schedule the next action after the result display time
-            setTimeout(() => {
-                auctionState.lastResult = null; // Clear the result
-                if (auctionState.auctionQueue.length > 0) {
-                    startNextItemAuction();
-                } else {
-                    endAuctionSession();
-                }
-            }, RESULT_DISPLAY_DURATION);
         }
 
         function endAuctionSession() {
@@ -420,14 +411,27 @@
         function gameLoop() {
             const now = Date.now();
             
+            // State transition: From result display to next state
+            if (auctionState.lastResult && now >= auctionState.lastResult.displayUntil) {
+                auctionState.lastResult = null; // Clear result
+                if (auctionState.auctionQueue.length > 0) {
+                    startNextItemAuction();
+                } else {
+                    endAuctionSession();
+                }
+            }
+            
+            // State transition: Start a new session
             if (!auctionState.isSessionActive && !auctionState.lastResult && now >= auctionState.nextSessionTime) {
                 startAuctionSession();
             }
 
+            // State transition: End an item auction
             if(auctionState.isSessionActive && auctionState.currentItem && now >= auctionState.currentItem.endTime && !auctionState.lastResult) {
                 endCurrentItemAuction();
             }
             
+            // NPC Bidding Logic
             if (auctionState.isSessionActive && auctionState.currentItem) {
                 runNpcBidding();
             }
