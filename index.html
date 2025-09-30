@@ -521,6 +521,15 @@
     setupHub('exchange');
     setupHub('trading');
     setupHub('crypto');
+
+    // --- Force links to open in the same tab ---
+    document.querySelectorAll('a[href$=".html"]').forEach(link => {
+        link.addEventListener('click', function(event) {
+            event.preventDefault();
+            window.location.href = this.getAttribute('href');
+        });
+    });
     </script>
 </body>
 </html>
+
