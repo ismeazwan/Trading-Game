@@ -49,6 +49,13 @@
             <!-- Game content will be rendered here by JavaScript -->
         </main>
 
+        <!-- New Panels -->
+        <div id="service-panel-container" class="mt-6"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div id="cs-panel-container"></div>
+            <div id="execution-panel-container"></div>
+        </div>
+
         <!-- Withdraw Section -->
         <div class="mt-6 bg-gray-800 p-6 rounded-lg">
             <h2 class="text-2xl font-bold mb-4 text-indigo-300">Manajemen Keuangan</h2>
@@ -78,18 +85,12 @@
             ftth: { category: 'infrastruktur', name: "Gelar Jaringan Fiber (FTTH)", icon: "🧵", baseCost: 20000000, opex: 500000, effects: { coverage: 150, capacity: 500, satisfaction: 5 }, description: "Menjangkau pelanggan via fiber, mahal tapi kapasitas besar & stabil." },
 
             // OPERASIONAL
-            teknisi: { category: 'operasional', name: "Rekrut Teknisi Lapangan", icon: "👨‍🔧", baseCost: 1000000, opex: 3000000, effects: { satisfaction: 2 }, description: "Mempercepat perbaikan dan instalasi baru." },
+            teknisi: { category: 'operasional', name: "Rekrut Teknisi Lapangan", icon: "👨‍🔧", baseCost: 1000000, opex: 3000000, effects: { satisfaction: 2, install_power: 1 }, description: "Mempercepat perbaikan dan instalasi baru." },
             cs: { category: 'operasional', name: "Bentuk Tim Customer Service", icon: "📞", baseCost: 2000000, opex: 1500000, effects: { satisfaction: 3, marketing: 0.1 }, description: "Meningkatkan kepuasan dan retensi pelanggan." },
             
             // PEMASARAN
             marketing_local: { category: 'pemasaran', name: "Kampanye Marketing Lokal", icon: "📰", baseCost: 500000, opex: 200000, effects: { marketing: 1 }, description: "Meningkatkan akuisisi pelanggan di area jangkauan." },
         };
-
-        const servicePackages = [
-            { id: 'hemat', name: "Paket Hemat", speed: 10, price: 150000 },
-            { id: 'standar', name: "Paket Standar", speed: 50, price: 300000 },
-            { id: 'cepat', name: "Paket Cepat", speed: 100, price: 500000 },
-        ];
 
         let gameState = {};
 
@@ -113,37 +114,62 @@
         function resetGame() {
              gameState = {
                 companyName: "Nusantara Net",
-                balance: 0, // Start with 0, must deposit from main game
+                balance: 0,
                 customers: 0,
-                customerDistribution: { hemat: 0, standar: 0, cepat: 0 },
+                customerDistribution: {},
                 upgrades: {},
                 opex: 0,
                 revenue: 0,
+                servicePackages: [
+                    { id: 'hemat_1', name: "Paket Hemat", speed: 10, price: 150000 },
+                    { id: 'standar_1', name: "Paket Standar", speed: 50, price: 300000 },
+                    { id: 'cepat_1', name: "Paket Cepat", speed: 100, price: 500000 },
+                ],
+                leads: [],
+                installationQueue: [],
             };
+            // Initialize customer distribution
+            gameState.servicePackages.forEach(pkg => gameState.customerDistribution[pkg.id] = 0);
         }
 
         function loadState() {
-            const savedData = localStorage.getItem('businessGameData');
+            const savedData = localStorage.getItem('ispGameData');
+            const cleanState = {
+                companyName: "Nusantara Net", balance: 0, customers: 0,
+                customerDistribution: {}, upgrades: {}, opex: 0, revenue: 0,
+                servicePackages: [
+                    { id: 'hemat_1', name: "Paket Hemat", speed: 10, price: 150000 },
+                    { id: 'standar_1', name: "Paket Standar", speed: 50, price: 300000 },
+                    { id: 'cepat_1', name: "Paket Cepat", speed: 100, price: 500000 },
+                ],
+                leads: [], installationQueue: [],
+            };
+
+            let parsedData = null;
+
             if (savedData) {
-                const parsedData = JSON.parse(savedData);
-                // Merge saved data with a clean structure to avoid errors with old save files
-                gameState = {
-                    companyName: "Nusantara Net",
-                    balance: 0,
-                    customers: 0,
-                    customerDistribution: { hemat: 0, standar: 0, cepat: 0 },
-                    upgrades: {},
-                    opex: 0,
-                    revenue: 0,
-                    ...parsedData
-                };
+                try {
+                    parsedData = JSON.parse(savedData);
+                    gameState = { ...cleanState, ...parsedData };
+                } catch(e) {
+                    console.error("Gagal memuat data, mereset game.", e);
+                    resetGame();
+                    parsedData = gameState;
+                }
             } else {
                 resetGame();
+                parsedData = gameState;
             }
+            
+            // Ensure customerDistribution keys always match the current servicePackages
+            const freshDistribution = {};
+            gameState.servicePackages.forEach(pkg => {
+                freshDistribution[pkg.id] = parsedData?.customerDistribution?.[pkg.id] || 0;
+            });
+            gameState.customerDistribution = freshDistribution;
         }
 
         function saveState() {
-            // Before saving, ensure the balance in localStorage is consistent with the game's state
             let data = JSON.parse(localStorage.getItem('businessGameData')) || {};
             data = {...data, ...gameState};
             localStorage.setItem('businessGameData', JSON.stringify(data));
@@ -159,7 +185,7 @@
         }
         
         function calculateMetrics() {
-            let totalBandwidth = 0, totalCoverage = 0, totalCapacity = 0;
+            let totalBandwidth = 0, totalCoverage = 0, totalCapacity = 0, installPower = 1;
             let satisfactionBoost = 0, marketingPower = 0, totalOpex = 0;
 
             for (const id in gameState.upgrades) {
@@ -172,14 +198,20 @@
                     if (effects.capacity) totalCapacity += effects.capacity * level;
                     if (effects.satisfaction) satisfactionBoost += effects.satisfaction * level;
                     if (effects.marketing) marketingPower += effects.marketing * level;
+                    if (effects.install_power) installPower += effects.install_power * level;
                     if (upgrade.opex) totalOpex += upgrade.opex * level;
                 }
             }
 
             const totalCustomers = gameState.customers;
-            const bandwidthUsage = (gameState.customerDistribution.hemat * servicePackages[0].speed) +
-                                   (gameState.customerDistribution.standar * servicePackages[1].speed) +
-                                   (gameState.customerDistribution.cepat * servicePackages[2].speed);
+            let bandwidthUsage = 0;
+            let revenue = 0;
+
+            gameState.servicePackages.forEach(pkg => {
+                const customerCount = gameState.customerDistribution[pkg.id] || 0;
+                bandwidthUsage += customerCount * pkg.speed;
+                revenue += customerCount * pkg.price;
+            });
             
             const congestion = Math.max(0, bandwidthUsage - totalBandwidth);
             let satisfaction = 50 + satisfactionBoost - (congestion / (totalBandwidth || 1)) * 100;
@@ -189,20 +221,15 @@
             }
             satisfaction = Math.max(0, Math.min(100, satisfaction));
 
-            const revenue = (gameState.customerDistribution.hemat * servicePackages[0].price) +
-                            (gameState.customerDistribution.standar * servicePackages[1].price) +
-                            (gameState.customerDistribution.cepat * servicePackages[2].price);
-
             gameState.opex = totalOpex;
             gameState.revenue = revenue;
 
-            return { totalBandwidth, totalCoverage, totalCapacity, satisfaction, marketingPower, bandwidthUsage };
+            return { totalBandwidth, totalCoverage, totalCapacity, satisfaction, marketingPower, bandwidthUsage, installPower };
         }
 
         function render() {
-            const container = document.getElementById('game-container');
             const metrics = calculateMetrics();
-
+            
             // Update Header
             document.getElementById('company-name-header').textContent = gameState.companyName;
             document.getElementById('balance').textContent = "Rp " + formatNumber(gameState.balance);
@@ -212,24 +239,27 @@
             netIncomeEl.className = `text-lg md:text-2xl font-bold ${netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`;
             
             document.getElementById('customers').textContent = formatNumber(gameState.customers);
-            
             const capacityInfo = getBandwidthUnit(metrics.totalBandwidth);
             const formattedUsage = (metrics.bandwidthUsage / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
             const formattedTotal = (metrics.totalBandwidth / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
             document.getElementById('capacity').innerHTML = `${formattedUsage} / ${formattedTotal} <span class="text-xs">${capacityInfo.unit}</span>`;
-
             document.getElementById('satisfaction').textContent = metrics.satisfaction.toFixed(1) + "%";
             
-            // Render Upgrade Panels
+            renderUpgradePanel();
+            renderServicePanel();
+            renderCsPanel();
+            renderExecutionPanel();
+        }
+
+        function renderUpgradePanel() {
+            const container = document.getElementById('game-container');
             const categories = {};
             Object.keys(upgrades).forEach(id => {
                 const upgrade = upgrades[id];
                 if (!categories[upgrade.category]) categories[upgrade.category] = '';
-
                 const level = getUpgradeLevel(id);
                 const cost = getUpgradeCost(id);
                 const canAfford = gameState.balance >= cost;
-
                 categories[upgrade.category] += `
                     <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
                         <div>
@@ -261,44 +291,111 @@
                     </div>
                 </div>`;
         }
+
+        function renderServicePanel() {
+            const container = document.getElementById('service-panel-container');
+            const packagesHTML = gameState.servicePackages.map(pkg => `
+                <div class="bg-gray-700 p-3 rounded-lg grid grid-cols-3 gap-2 items-center">
+                    <input type="text" value="${pkg.name}" class="bg-gray-800 p-2 rounded col-span-3 service-input" data-id="${pkg.id}" data-field="name" placeholder="Nama Paket">
+                    <div class="col-span-1">
+                        <label class="text-xs text-gray-400">Kecepatan (Mbps)</label>
+                        <input type="number" value="${pkg.speed}" class="w-full bg-gray-800 p-2 rounded service-input" data-id="${pkg.id}" data-field="speed">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-400">Harga Bulanan (Rp)</label>
+                        <input type="number" value="${pkg.price}" class="w-full bg-gray-800 p-2 rounded service-input" data-id="${pkg.id}" data-field="price">
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-orange-300">Panel Layanan Internet</h2>
+                    <div class="space-y-4">${packagesHTML}</div>
+                </div>`;
+        }
+        
+        function renderCsPanel() {
+            const container = document.getElementById('cs-panel-container');
+            let leadsHTML = '<p class="text-gray-500 text-center">Tidak ada permintaan berlangganan baru.</p>';
+            if(gameState.leads.length > 0) {
+                leadsHTML = gameState.leads.map(lead => {
+                    const pkg = gameState.servicePackages.find(p => p.id === lead.packageId);
+                    return `
+                    <div class="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">${pkg.name}</p>
+                            <p class="text-xs text-gray-400">${pkg.speed} Mbps - ${formatNumber(pkg.price)}/bulan</p>
+                        </div>
+                        <button class="accept-lead-btn bg-green-600 hover:bg-green-700 text-xs font-bold py-1 px-3 rounded" data-id="${lead.id}">Terima</button>
+                    </div>
+                    `;
+                }).join('');
+            }
+            container.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg h-full">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-300">Panel Customer Service (${gameState.leads.length})</h2>
+                    <div class="space-y-2 max-h-60 overflow-y-auto pr-2">${leadsHTML}</div>
+                </div>`;
+        }
+
+        function renderExecutionPanel() {
+             const container = document.getElementById('execution-panel-container');
+            let queueHTML = '<p class="text-gray-500 text-center">Tidak ada jadwal instalasi.</p>';
+            if(gameState.installationQueue.length > 0) {
+                queueHTML = gameState.installationQueue.map(job => {
+                    const pkg = gameState.servicePackages.find(p => p.id === job.packageId);
+                    return `
+                    <div class="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">${pkg.name}</p>
+                            <p class="text-xs text-gray-400">Instalasi Baru</p>
+                        </div>
+                        <button class="install-btn bg-cyan-600 hover:bg-cyan-700 text-xs font-bold py-1 px-3 rounded" data-id="${job.id}">Instal</button>
+                    </div>
+                    `;
+                }).join('');
+            }
+            container.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg h-full">
+                    <h2 class="text-2xl font-bold mb-4 text-teal-300">Panel Eksekusi (${gameState.installationQueue.length})</h2>
+                    <div class="space-y-2 max-h-60 overflow-y-auto pr-2">${queueHTML}</div>
+                </div>`;
+        }
         
         function gameLoop() {
             const metrics = calculateMetrics();
             
-            // 1. Calculate Net Income (per tick)
+            // 1. Calculate Net Income
             const netIncomePerTick = (gameState.revenue - gameState.opex) / 30;
             gameState.balance += netIncomePerTick;
 
-            // 2. Customer Acquisition
-            const marketAttraction = metrics.marketingPower * (metrics.satisfaction / 100);
-            const potentialNewCustomers = Math.floor(metrics.totalCoverage * (marketAttraction / 100) * 0.1);
-            
-            if (potentialNewCustomers > 0 && gameState.customers < metrics.totalCapacity) {
-                const totalAttraction = 3 + 2 + 1; 
-                let newSignups = Math.ceil(potentialNewCustomers * Math.random());
-                
-                let newHemat = Math.min(newSignups, Math.floor(newSignups * (3 / totalAttraction)));
-                gameState.customerDistribution.hemat += newHemat;
-                
-                let newStandar = Math.min(newSignups - newHemat, Math.floor(newSignups * (2 / totalAttraction)));
-                gameState.customerDistribution.standar += newStandar;
-                
-                let newCepat = newSignups - newHemat - newStandar;
-                gameState.customerDistribution.cepat += newCepat;
+            // 2. Generate new leads
+            if (Math.random() < 0.2) { // 20% chance per second to generate leads
+                const marketAttraction = metrics.marketingPower * (metrics.satisfaction / 100);
+                const potentialNewCustomers = Math.floor(metrics.totalCoverage * (marketAttraction / 100) * 0.05);
+                if (potentialNewCustomers > 0) {
+                    for(let i = 0; i < potentialNewCustomers; i++) {
+                        if (gameState.leads.length < 20) { // Limit leads queue
+                            const randomPackage = gameState.servicePackages[Math.floor(Math.random() * gameState.servicePackages.length)];
+                            gameState.leads.push({ id: Date.now() + Math.random(), packageId: randomPackage.id });
+                        }
+                    }
+                }
             }
             
             // 3. Customer Churn
             const churnRate = (100 - metrics.satisfaction) / 5000; 
-            Object.keys(gameState.customerDistribution).forEach(pkg => {
-                const churned = Math.floor(gameState.customerDistribution[pkg] * churnRate);
-                gameState.customerDistribution[pkg] -= churned;
+            Object.keys(gameState.customerDistribution).forEach(pkgId => {
+                const churned = Math.floor(gameState.customerDistribution[pkgId] * churnRate);
+                gameState.customerDistribution[pkgId] -= churned;
             });
-
             gameState.customers = Object.values(gameState.customerDistribution).reduce((a, b) => a + b, 0);
             
             render();
         }
-
+        
+        // --- EVENT HANDLERS ---
         document.body.addEventListener('click', e => {
             const upgradeButton = e.target.closest('.upgrade-btn');
             if (upgradeButton) {
@@ -307,7 +404,39 @@
                 if (gameState.balance >= cost) {
                     gameState.balance -= cost;
                     gameState.upgrades[id] = (gameState.upgrades[id] || 0) + 1;
-                    render();
+                }
+            }
+
+            const acceptLeadBtn = e.target.closest('.accept-lead-btn');
+            if(acceptLeadBtn) {
+                const leadId = parseFloat(acceptLeadBtn.dataset.id);
+                const leadIndex = gameState.leads.findIndex(l => l.id === leadId);
+                if (leadIndex > -1) {
+                    const [lead] = gameState.leads.splice(leadIndex, 1);
+                    gameState.installationQueue.push(lead);
+                }
+            }
+            
+            const installBtn = e.target.closest('.install-btn');
+            if(installBtn) {
+                const jobId = parseFloat(installBtn.dataset.id);
+                const jobIndex = gameState.installationQueue.findIndex(j => j.id === jobId);
+                if(jobIndex > -1) {
+                    const [job] = gameState.installationQueue.splice(jobIndex, 1);
+                    gameState.customerDistribution[job.packageId]++;
+                    gameState.customers++;
+                }
+            }
+        });
+
+        document.body.addEventListener('input', e => {
+             if (e.target.classList.contains('service-input')) {
+                const id = e.target.dataset.id;
+                const field = e.target.dataset.field;
+                const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+                const pkg = gameState.servicePackages.find(p => p.id === id);
+                if (pkg) {
+                    pkg[field] = value;
                 }
             }
         });
@@ -315,37 +444,20 @@
         document.getElementById('withdraw-btn').addEventListener('click', () => {
             const amountInput = document.getElementById('withdraw-amount');
             const amount = parseFloat(amountInput.value);
-
-            if (isNaN(amount) || amount <= 0) {
-                alert('Jumlah penarikan tidak valid.');
-                return;
-            }
-            if (amount > gameState.balance) {
-                alert('Kas operasional tidak mencukupi.');
-                return;
-            }
+            if (isNaN(amount) || amount <= 0) return alert('Jumlah penarikan tidak valid.');
+            if (amount > gameState.balance) return alert('Kas operasional tidak mencukupi.');
 
             gameState.balance -= amount;
-            
             const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
             localStorage.setItem('tycoonWithdrawal', tycoonWithdrawal + amount);
-
             alert(`Dana sebesar ${formatNumber(amount)} berhasil ditarik ke kas utama Idle Tycoon.`);
             amountInput.value = '';
-            render();
         });
         
-        // This listener syncs data when the tab gets focus
-        window.addEventListener('focus', () => {
-            loadState();
-            render();
-        });
-
-        // This listener syncs data instantly when another tab changes it
+        window.addEventListener('focus', loadState);
         window.addEventListener('storage', (event) => {
             if (event.key === 'businessGameData') {
                 loadState();
-                render();
             }
         });
 
