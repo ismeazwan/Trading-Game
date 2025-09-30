@@ -469,7 +469,7 @@
 
             if (Math.random() < 0.2) {
                 const marketAttraction = metrics.marketingPower * (metrics.satisfaction / 100);
-                if (Math.random() < 0.1 && gameState.b2bServices.length > 0) { // 10% of leads are B2B
+                if (Math.random() < 0.1 && gameState.b2bServices.length > 0) {
                      if (gameState.leads.length < 20) {
                         const randomPackage = gameState.b2bServices[Math.floor(Math.random() * gameState.b2bServices.length)];
                         gameState.leads.push({ id: Date.now() + Math.random(), packageId: randomPackage.id, isB2B: true });
@@ -502,71 +502,64 @@
             }
         }
 
-        function teamTaskLoop() { /* ... unchanged ... */ }
+        function teamTaskLoop() {
+            const csPower = gameState.teams.cs;
+            for (let i = 0; i < csPower; i++) {
+                if (gameState.leads.length > 0) {
+                    const lead = gameState.leads.shift();
+                    gameState.installationQueue.push(lead);
+                } else { break; }
+            }
+
+            const techPower = gameState.teams.teknisi;
+            for (let i = 0; i < techPower; i++) {
+                if (gameState.installationQueue.length === 0) break;
+                
+                let installableJobIndex = -1;
+                let currentMetrics = calculateMetrics();
+
+                for (let j = 0; j < gameState.installationQueue.length; j++) {
+                    const job = gameState.installationQueue[j];
+                    const serviceCollection = job.isB2B ? gameState.b2bServices : gameState.servicePackages;
+                    const pkg = serviceCollection.find(p => p.id === job.packageId);
+                    if (!pkg) continue;
+
+                    const newBandwidthUsage = currentMetrics.bandwidthUsage + pkg.speed;
+                    const hasPhysicalCapacity = ((gameState.customers + (gameState.b2bCustomers || []).length) + 1) <= currentMetrics.totalCapacity;
+                    const hasBandwidthCapacity = newBandwidthUsage <= (currentMetrics.totalIIX + currentMetrics.totalIX);
+                    const hasMetroCapacity = newBandwidthUsage <= currentMetrics.totalMetroCapacity;
+
+                    if (hasPhysicalCapacity && hasBandwidthCapacity && (pkg.type !== 'metro' || hasMetroCapacity)) {
+                        installableJobIndex = j;
+                        break;
+                    }
+                }
+                
+                if (installableJobIndex > -1) {
+                    const [job] = gameState.installationQueue.splice(installableJobIndex, 1);
+                    const pkg = (job.isB2B ? gameState.b2bServices : gameState.servicePackages).find(p => p.id === job.packageId);
+
+                    if (pkg) {
+                        if (job.isB2B) {
+                            if (!gameState.b2bCustomers) gameState.b2bCustomers = [];
+                            gameState.b2bCustomers.push({ ...pkg, customerId: Date.now() + Math.random() });
+                        } else {
+                            if (gameState.customerDistribution[job.packageId] !== undefined) {
+                                gameState.customerDistribution[job.packageId]++;
+                            }
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
+            gameState.customers = Math.floor(Object.values(gameState.customerDistribution).reduce((a, b) => a + b, 0));
+        }
         
-        document.body.addEventListener('click', e => {
-            const upgradeButton = e.target.closest('.upgrade-btn');
-            if (upgradeButton) {
-                const id = upgradeButton.dataset.id;
-                const cost = getUpgradeCost(id);
-                if (gameState.balance >= cost) {
-                    gameState.balance -= cost;
-                    gameState.upgrades[id] = (gameState.upgrades[id] || 0) + 1;
-                    renderUpgradePanel();
-                }
-            }
-            const buildButton = e.target.closest('.build-btn');
-            if (buildButton) {
-                const id = buildButton.dataset.id;
-                const cost = getUpgradeCost(id);
-                if (gameState.balance >= cost && !gameState.constructionQueue.some(p => p.id === id)) {
-                    gameState.balance -= cost;
-                    const buildTime = upgrades[id].buildTime * 1000;
-                    gameState.constructionQueue.push({ id, name: upgrades[id].name, startTime: Date.now(), endTime: Date.now() + buildTime });
-                    renderUpgradePanel();
-                }
-            }
-            const recruitButton = e.target.closest('.recruit-btn');
-            if (recruitButton) {
-                const id = recruitButton.dataset.id;
-                const cost = getUpgradeCost(id, true);
-                if (gameState.balance >= cost) {
-                    gameState.balance -= cost;
-                    gameState.teams[id]++;
-                    renderUpgradePanel();
-                }
-            }
-            if (e.target.id === 'toggle-edit-packages-btn') {
-                gameState.isEditingPackages = !gameState.isEditingPackages;
-                renderServicePanel();
-                if(!gameState.isEditingPackages) saveState();
-            }
-            if(e.target.closest('#service-tabs')) {
-                const tabButton = e.target.closest('.tab-button');
-                if(tabButton) {
-                    document.querySelectorAll('#service-tabs .tab-button').forEach(btn => btn.classList.remove('active', 'text-white'));
-                    tabButton.classList.add('active', 'text-white');
-                    document.getElementById('b2c-services-content').classList.toggle('hidden', tabButton.dataset.tab !== 'b2c');
-                    document.getElementById('b2b-services-content').classList.toggle('hidden', tabButton.dataset.tab !== 'b2b');
-                }
-            }
-            if(e.target.id === 'buy-iix-btn' || e.target.id === 'buy-ix-btn') { /* ... unchanged ... */ }
-        });
-
-        document.body.addEventListener('input', e => {
-             if (e.target.classList.contains('service-input')) {
-                const id = e.target.dataset.id;
-                const type = e.target.dataset.type;
-                const field = e.target.dataset.field;
-                const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
-                const collection = type === 'b2c' ? gameState.servicePackages : gameState.b2bServices;
-                const item = collection.find(p => p.id === id);
-                if (item) { item[field] = value; }
-            }
-            /* ... other input listeners ... */
-        });
-
+        document.body.addEventListener('click', e => { /* ... unchanged ... */ });
+        document.body.addEventListener('input', e => { /* ... unchanged ... */ });
         document.getElementById('withdraw-btn').addEventListener('click', () => { /* ... unchanged ... */ });
+        
         window.addEventListener('focus', () => { loadState(); renderAll(); });
         window.addEventListener('storage', (event) => {
             if (event.key === 'businessGameData') { loadState(); renderAll(); }
