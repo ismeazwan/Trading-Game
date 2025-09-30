@@ -90,16 +90,16 @@
                  </div>
             </div>
 
-            <!-- Hub Bursa Saham -->
+            <!-- Hub Platform Lelang -->
             <div id="exchange-screen" class="screen hidden bg-gray-700 p-4 rounded-lg">
-                 <h2 class="text-xl font-bold mb-4 text-purple-400">Bursa Saham</h2>
+                 <h2 class="text-xl font-bold mb-4 text-purple-400">Platform Lelang</h2>
                 <div class="bg-gray-800 p-4 rounded-lg mb-4">
-                    <p class="text-sm text-gray-400">Saldo Anda di Bursa</p>
+                    <p class="text-sm text-gray-400">Saldo Anda di Lelang</p>
                     <p id="exchange-balance" class="text-2xl font-bold">Rp 0</p>
                 </div>
                 <div class="space-y-4">
                     <div>
-                        <h3 class="font-semibold mb-2">Deposit ke Bursa</h3>
+                        <h3 class="font-semibold mb-2">Deposit ke Lelang</h3>
                         <div class="flex space-x-2">
                             <div class="relative w-full">
                                 <input type="number" id="deposit-amount-exchange" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah deposit">
@@ -109,7 +109,7 @@
                         </div>
                     </div>
                     <div>
-                        <h3 class="font-semibold mb-2">Tarik dari Bursa</h3>
+                        <h3 class="font-semibold mb-2">Tarik dari Lelang</h3>
                          <div class="flex space-x-2">
                             <div class="relative w-full">
                                 <input type="number" id="withdraw-amount-exchange" class="w-full bg-gray-900 p-2 rounded pr-12" placeholder="Jumlah penarikan">
@@ -120,8 +120,8 @@
                     </div>
                 </div>
                  <div class="mt-6 text-center">
-                     <a href="bursa_saham.html" class="w-full block bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded">
-                         Buka Platform Bursa Saham
+                     <a href="lelang.html" class="w-full block bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded">
+                         Buka Platform Lelang
                      </a>
                  </div>
             </div>
@@ -232,7 +232,7 @@
         <nav class="bg-gray-900 p-2 grid grid-cols-7 gap-1 sticky bottom-0">
             <button class="nav-button p-1 rounded-lg flex flex-col items-center active" data-screen="main-screen">🏠<span class="text-xs">Utama</span></button>
             <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="business-hub-screen">🏢<span class="text-xs">Bisnis</span></button>
-            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="exchange-screen">🏛️<span class="text-xs">Bursa</span></button>
+            <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="exchange-screen">⚖️<span class="text-xs">Lelang</span></button>
             <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="trading-screen">📊<span class="text-xs">Trading</span></button>
             <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="crypto-screen">🪙<span class="text-xs">Crypto</span></button>
             <button class="nav-button p-1 rounded-lg flex flex-col items-center" data-screen="shop-screen">🛍️<span class="text-xs">Toko</span></button>
@@ -532,4 +532,5 @@
     </script>
 </body>
 </html>
+
 
