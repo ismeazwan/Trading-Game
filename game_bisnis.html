@@ -133,7 +133,7 @@
         }
 
         function loadState() {
-            const savedData = localStorage.getItem('ispGameData');
+            const savedData = localStorage.getItem('businessGameData'); // FIX: Use the correct shared key
             const cleanState = {
                 companyName: "Nusantara Net", balance: 0, customers: 0,
                 customerDistribution: {}, upgrades: {}, opex: 0, revenue: 0,
@@ -150,7 +150,12 @@
             if (savedData) {
                 try {
                     parsedData = JSON.parse(savedData);
-                    gameState = { ...cleanState, ...parsedData };
+                    // Merge saved data, but ensure the local gameState is the primary source for non-balance properties
+                    gameState = { 
+                        ...cleanState, 
+                        ...parsedData, 
+                        balance: parsedData.balance || 0  // Prioritize balance from saved data
+                    };
                 } catch(e) {
                     console.error("Gagal memuat data, mereset game.", e);
                     resetGame();
@@ -170,7 +175,9 @@
         }
 
         function saveState() {
+            // Read existing data first to not overwrite other properties (like from main game)
             let data = JSON.parse(localStorage.getItem('businessGameData')) || {};
+            // Merge our current game state on top of it
             data = {...data, ...gameState};
             localStorage.setItem('businessGameData', JSON.stringify(data));
         }
