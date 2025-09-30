@@ -86,6 +86,8 @@
             ITEM005: { name: "Batu Permata Langka", basePrice: 80000000, icon: '💎' },
             ITEM006: { name: "Koin Emas Kuno", basePrice: 30000000, icon: '🪙' }
         };
+
+        const npcBidders = ["Kolektor Misterius", "Sultan Kaya", "Pialang Seni", "Juragan Properti", "Investor Global"];
         
         function showToast(message, type = 'info') {
             const toastContainer = document.getElementById('toast-container');
@@ -180,7 +182,7 @@
                 auctionState.inventory[item.id] = inventoryItem;
                 showToast(`Selamat! Anda memenangkan ${item.name}!`, 'success');
             } else if (item.highestBidder !== 'Belum ada') {
-                 showToast(`${item.name} dimenangkan penawar lain.`, 'error');
+                 showToast(`${item.name} dimenangkan oleh ${item.highestBidder}.`, 'error');
             } else {
                  showToast(`${item.name} tidak terjual.`, 'info');
             }
@@ -189,12 +191,21 @@
                 name: item.name,
                 icon: item.icon,
                 winner: item.highestBidder,
-                winningBid: item.currentBid,
-                displayUntil: Date.now() + RESULT_DISPLAY_DURATION
+                winningBid: item.currentBid
             };
 
             auctionState.currentItem = null;
             saveState();
+            
+            // Explicitly schedule the next action after the result display time
+            setTimeout(() => {
+                auctionState.lastResult = null; // Clear the result
+                if (auctionState.auctionQueue.length > 0) {
+                    startNextItemAuction();
+                } else {
+                    endAuctionSession();
+                }
+            }, RESULT_DISPLAY_DURATION);
         }
 
         function endAuctionSession() {
@@ -375,26 +386,50 @@
             saveState();
         }
 
+        function runNpcBidding() {
+            const item = auctionState.currentItem;
+            if (!item || item.endTime < Date.now()) return;
+
+            const timeLeftRatio = (item.endTime - Date.now()) / ITEM_DURATION;
+            const urgencyFactor = 1 - timeLeftRatio;
+            
+            const bidChance = 0.2 + (urgencyFactor > 0.7 ? 0.3 : 0);
+
+            if (Math.random() < bidChance) {
+                if (item.highestBidder === 'Anda' || Math.random() < 0.15) { 
+                    const randomNpc = npcBidders[Math.floor(Math.random() * npcBidders.length)];
+                    if (randomNpc === item.highestBidder) return;
+
+                    const bidIncreasePercent = 0.05 + (Math.random() * 0.10);
+                    let newBid = item.currentBid * (1 + bidIncreasePercent);
+                    newBid = Math.ceil(newBid / 1000) * 1000;
+
+                    if (item.highestBidder === 'Anda') {
+                        auctionState.balance += item.currentBid;
+                        showToast(`${randomNpc} mengalahkan tawaran Anda!`, 'error');
+                    } else {
+                        showToast(`${randomNpc} menawar ${formatCurrency(newBid)}!`, 'info');
+                    }
+
+                    item.currentBid = newBid;
+                    item.highestBidder = randomNpc;
+                }
+            }
+        }
+
         function gameLoop() {
             const now = Date.now();
             
-            // State transition: From result display to next state
-            if (auctionState.lastResult && now >= auctionState.lastResult.displayUntil) {
-                if (auctionState.auctionQueue.length > 0) {
-                    startNextItemAuction();
-                } else {
-                    endAuctionSession();
-                }
-            }
-            
-            // State transition: Start a new session
             if (!auctionState.isSessionActive && !auctionState.lastResult && now >= auctionState.nextSessionTime) {
                 startAuctionSession();
             }
 
-            // State transition: End an item auction
-            if(auctionState.isSessionActive && auctionState.currentItem && now >= auctionState.currentItem.endTime) {
+            if(auctionState.isSessionActive && auctionState.currentItem && now >= auctionState.currentItem.endTime && !auctionState.lastResult) {
                 endCurrentItemAuction();
+            }
+            
+            if (auctionState.isSessionActive && auctionState.currentItem) {
+                runNpcBidding();
             }
             
             renderAll();
