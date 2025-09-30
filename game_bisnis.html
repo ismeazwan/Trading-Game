@@ -85,8 +85,8 @@
             ftth: { category: 'infrastruktur', name: "Gelar Jaringan Fiber (FTTH)", icon: "🧵", baseCost: 20000000, opex: 500000, effects: { coverage: 150, capacity: 500, satisfaction: 5 }, description: "Menjangkau pelanggan via fiber, mahal tapi kapasitas besar & stabil." },
 
             // OPERASIONAL
-            teknisi: { category: 'operasional', name: "Rekrut Teknisi Lapangan", icon: "👨‍🔧", baseCost: 1000000, opex: 3000000, effects: { satisfaction: 2, install_power: 1 }, description: "Mempercepat perbaikan dan instalasi baru." },
-            cs: { category: 'operasional', name: "Bentuk Tim Customer Service", icon: "📞", baseCost: 2000000, opex: 1500000, effects: { satisfaction: 3, marketing: 0.1 }, description: "Meningkatkan kepuasan dan retensi pelanggan." },
+            teknisi: { category: 'operasional', name: "Rekrut Teknisi Lapangan", icon: "👨‍🔧", baseCost: 5000000, opex: 4000000, effects: {}, description: "Menambah 1 teknisi untuk tim instalasi." },
+            cs: { category: 'operasional', name: "Rekrut Staf CS", icon: "📞", baseCost: 3000000, opex: 2500000, effects: {}, description: "Menambah 1 staf untuk memproses permintaan pelanggan." },
             
             // PEMASARAN
             marketing_local: { category: 'pemasaran', name: "Kampanye Marketing Lokal", icon: "📰", baseCost: 500000, opex: 200000, effects: { marketing: 1 }, description: "Meningkatkan akuisisi pelanggan di area jangkauan." },
@@ -118,6 +118,7 @@
                 customers: 0,
                 customerDistribution: {},
                 upgrades: {},
+                teams: { teknisi: 0, cs: 0 },
                 opex: 0,
                 revenue: 0,
                 servicePackages: [
@@ -128,15 +129,14 @@
                 leads: [],
                 installationQueue: [],
             };
-            // Initialize customer distribution
             gameState.servicePackages.forEach(pkg => gameState.customerDistribution[pkg.id] = 0);
         }
 
         function loadState() {
-            const savedData = localStorage.getItem('businessGameData'); // FIX: Use the correct shared key
+            const savedData = localStorage.getItem('businessGameData');
             const cleanState = {
                 companyName: "Nusantara Net", balance: 0, customers: 0,
-                customerDistribution: {}, upgrades: {}, opex: 0, revenue: 0,
+                customerDistribution: {}, upgrades: {}, teams: { teknisi: 0, cs: 0 }, opex: 0, revenue: 0,
                 servicePackages: [
                     { id: 'hemat_1', name: "Paket Hemat", speed: 10, price: 150000 },
                     { id: 'standar_1', name: "Paket Standar", speed: 50, price: 300000 },
@@ -144,29 +144,14 @@
                 ],
                 leads: [], installationQueue: [],
             };
-
             let parsedData = null;
-
             if (savedData) {
                 try {
                     parsedData = JSON.parse(savedData);
-                    // Merge saved data, but ensure the local gameState is the primary source for non-balance properties
-                    gameState = { 
-                        ...cleanState, 
-                        ...parsedData, 
-                        balance: parsedData.balance || 0  // Prioritize balance from saved data
-                    };
-                } catch(e) {
-                    console.error("Gagal memuat data, mereset game.", e);
-                    resetGame();
-                    parsedData = gameState;
-                }
-            } else {
-                resetGame();
-                parsedData = gameState;
-            }
+                    gameState = { ...cleanState, ...parsedData, balance: parsedData.balance || 0 };
+                } catch(e) { resetGame(); parsedData = gameState; }
+            } else { resetGame(); parsedData = gameState; }
             
-            // Ensure customerDistribution keys always match the current servicePackages
             const freshDistribution = {};
             gameState.servicePackages.forEach(pkg => {
                 freshDistribution[pkg.id] = parsedData?.customerDistribution?.[pkg.id] || 0;
@@ -175,9 +160,7 @@
         }
 
         function saveState() {
-            // Read existing data first to not overwrite other properties (like from main game)
             let data = JSON.parse(localStorage.getItem('businessGameData')) || {};
-            // Merge our current game state on top of it
             data = {...data, ...gameState};
             localStorage.setItem('businessGameData', JSON.stringify(data));
         }
@@ -186,34 +169,36 @@
             return gameState.upgrades[id] || 0;
         }
 
-        function getUpgradeCost(id) {
-            const level = getUpgradeLevel(id);
-            return Math.floor(upgrades[id].baseCost * Math.pow(1.5, level));
+        function getUpgradeCost(id, isTeam = false) {
+            const baseCost = upgrades[id].baseCost;
+            const count = isTeam ? gameState.teams[id] : getUpgradeLevel(id);
+            const multiplier = isTeam ? 1.2 : 1.5;
+            return Math.floor(baseCost * Math.pow(multiplier, count));
         }
         
         function calculateMetrics() {
-            let totalBandwidth = 0, totalCoverage = 0, totalCapacity = 0, installPower = 1;
+            let totalBandwidth = 0, totalCoverage = 0, totalCapacity = 0;
             let satisfactionBoost = 0, marketingPower = 0, totalOpex = 0;
 
             for (const id in gameState.upgrades) {
                 const level = gameState.upgrades[id];
                 const upgrade = upgrades[id];
-                if (level > 0) {
+                if (level > 0 && upgrade.category !== 'operasional') {
                     const effects = upgrade.effects;
                     if (effects.bandwidth) totalBandwidth += effects.bandwidth * level;
                     if (effects.coverage) totalCoverage += effects.coverage * level;
                     if (effects.capacity) totalCapacity += effects.capacity * level;
                     if (effects.satisfaction) satisfactionBoost += effects.satisfaction * level;
                     if (effects.marketing) marketingPower += effects.marketing * level;
-                    if (effects.install_power) installPower += effects.install_power * level;
                     if (upgrade.opex) totalOpex += upgrade.opex * level;
                 }
             }
+            // Add OPEX for teams
+            totalOpex += gameState.teams.teknisi * upgrades.teknisi.opex;
+            totalOpex += gameState.teams.cs * upgrades.cs.opex;
 
             const totalCustomers = gameState.customers;
-            let bandwidthUsage = 0;
-            let revenue = 0;
-
+            let bandwidthUsage = 0, revenue = 0;
             gameState.servicePackages.forEach(pkg => {
                 const customerCount = gameState.customerDistribution[pkg.id] || 0;
                 bandwidthUsage += customerCount * pkg.speed;
@@ -222,7 +207,6 @@
             
             const congestion = Math.max(0, bandwidthUsage - totalBandwidth);
             let satisfaction = 50 + satisfactionBoost - (congestion / (totalBandwidth || 1)) * 100;
-
             if (totalCustomers > totalCapacity) {
                 satisfaction -= ((totalCustomers - totalCapacity) / totalCapacity) * 50;
             }
@@ -231,20 +215,17 @@
             gameState.opex = totalOpex;
             gameState.revenue = revenue;
 
-            return { totalBandwidth, totalCoverage, totalCapacity, satisfaction, marketingPower, bandwidthUsage, installPower };
+            return { totalBandwidth, totalCoverage, totalCapacity, satisfaction, marketingPower, bandwidthUsage };
         }
 
         function render() {
             const metrics = calculateMetrics();
-            
-            // Update Header
             document.getElementById('company-name-header').textContent = gameState.companyName;
             document.getElementById('balance').textContent = "Rp " + formatNumber(gameState.balance);
-            const netIncome = (gameState.revenue - gameState.opex) / 30; // Per tick
+            const netIncome = (gameState.revenue - gameState.opex) / 30;
             const netIncomeEl = document.getElementById('net-income');
             netIncomeEl.textContent = "Rp " + formatNumber(netIncome);
             netIncomeEl.className = `text-lg md:text-2xl font-bold ${netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`;
-            
             document.getElementById('customers').textContent = formatNumber(gameState.customers);
             const capacityInfo = getBandwidthUnit(metrics.totalBandwidth);
             const formattedUsage = (metrics.bandwidthUsage / capacityInfo.divisor).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
@@ -260,41 +241,62 @@
 
         function renderUpgradePanel() {
             const container = document.getElementById('game-container');
-            const categories = {};
+            const categories = { infrastruktur: '', operasional: '', pemasaran: '' };
             Object.keys(upgrades).forEach(id => {
                 const upgrade = upgrades[id];
-                if (!categories[upgrade.category]) categories[upgrade.category] = '';
-                const level = getUpgradeLevel(id);
-                const cost = getUpgradeCost(id);
-                const canAfford = gameState.balance >= cost;
-                categories[upgrade.category] += `
-                    <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-start">
-                                <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
-                                <p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Lv. ${level}</p>
+                let html = '';
+                if (upgrade.category === 'operasional') {
+                    const count = gameState.teams[id];
+                    const cost = getUpgradeCost(id, true);
+                    const canAfford = gameState.balance >= cost;
+                    html = `
+                        <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start">
+                                    <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
+                                    <p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Tim: ${count}</p>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">Gaji Bulanan: ${formatNumber(upgrade.opex * count)}</p>
+                                <p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p>
-                        </div>
-                        <button class="upgrade-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
-                            Beli/Upgrade (${formatNumber(cost)})
-                        </button>
-                    </div>`;
+                            <button class="recruit-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
+                                Rekrut (${formatNumber(cost)})
+                            </button>
+                        </div>`;
+                } else {
+                    const level = getUpgradeLevel(id);
+                    const cost = getUpgradeCost(id);
+                    const canAfford = gameState.balance >= cost;
+                    html = `
+                        <div class="bg-gray-700 p-4 rounded-lg flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start">
+                                    <p class="font-bold text-lg">${upgrade.icon} ${upgrade.name}</p>
+                                    <p class="font-bold text-lg bg-gray-800 px-2 rounded-md">Lv. ${level}</p>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1 mb-3">${upgrade.description}</p>
+                            </div>
+                            <button class="upgrade-btn w-full mt-auto text-sm font-bold py-2 px-4 rounded ${canAfford ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 opacity-50 cursor-not-allowed'}" data-id="${id}" ${!canAfford ? 'disabled' : ''}>
+                                Beli/Upgrade (${formatNumber(cost)})
+                            </button>
+                        </div>`;
+                }
+                categories[upgrade.category] += html;
             });
             
             container.innerHTML = `
                 <div class="space-y-6">
                     <div>
                         <h2 class="text-2xl font-bold mb-3 text-cyan-300">Infrastruktur</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${categories.infrastruktur || ''}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${categories.infrastruktur}</div>
                     </div>
-                     <div>
+                    <div>
                         <h2 class="text-2xl font-bold mb-3 text-green-300">Operasional & Tim</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${categories.operasional || ''}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${categories.operasional}</div>
                     </div>
-                     <div>
+                    <div>
                         <h2 class="text-2xl font-bold mb-3 text-yellow-300">Pemasaran & Penjualan</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${categories.pemasaran || ''}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${categories.pemasaran}</div>
                     </div>
                 </div>`;
         }
@@ -314,76 +316,37 @@
                     </div>
                 </div>
             `).join('');
-
-            container.innerHTML = `
-                <div class="bg-gray-800 p-6 rounded-lg">
-                    <h2 class="text-2xl font-bold mb-4 text-orange-300">Panel Layanan Internet</h2>
-                    <div class="space-y-4">${packagesHTML}</div>
-                </div>`;
+            container.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg"><h2 class="text-2xl font-bold mb-4 text-orange-300">Panel Layanan Internet</h2><div class="space-y-4">${packagesHTML}</div></div>`;
         }
         
         function renderCsPanel() {
             const container = document.getElementById('cs-panel-container');
-            let leadsHTML = '<p class="text-gray-500 text-center">Tidak ada permintaan berlangganan baru.</p>';
+            let leadsHTML = `<p class="text-gray-500 text-center">Tidak ada permintaan.</p>`;
             if(gameState.leads.length > 0) {
-                leadsHTML = gameState.leads.map(lead => {
-                    const pkg = gameState.servicePackages.find(p => p.id === lead.packageId);
-                    return `
-                    <div class="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
-                        <div>
-                            <p class="font-semibold">${pkg.name}</p>
-                            <p class="text-xs text-gray-400">${pkg.speed} Mbps - ${formatNumber(pkg.price)}/bulan</p>
-                        </div>
-                        <button class="accept-lead-btn bg-green-600 hover:bg-green-700 text-xs font-bold py-1 px-3 rounded" data-id="${lead.id}">Terima</button>
-                    </div>
-                    `;
-                }).join('');
+                leadsHTML = gameState.leads.map(lead => `<div class="bg-gray-700 p-3 rounded-lg"><p class="font-semibold">${gameState.servicePackages.find(p=>p.id===lead.packageId).name}</p></div>`).join('');
             }
-            container.innerHTML = `
-                <div class="bg-gray-800 p-6 rounded-lg h-full">
-                    <h2 class="text-2xl font-bold mb-4 text-blue-300">Panel Customer Service (${gameState.leads.length})</h2>
-                    <div class="space-y-2 max-h-60 overflow-y-auto pr-2">${leadsHTML}</div>
-                </div>`;
+            container.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg h-full"><h2 class="text-2xl font-bold mb-4 text-blue-300">Panel CS (${gameState.leads.length})</h2><div class="space-y-2 max-h-60 overflow-y-auto pr-2">${leadsHTML}</div></div>`;
         }
 
         function renderExecutionPanel() {
              const container = document.getElementById('execution-panel-container');
-            let queueHTML = '<p class="text-gray-500 text-center">Tidak ada jadwal instalasi.</p>';
+            let queueHTML = `<p class="text-gray-500 text-center">Tidak ada jadwal.</p>`;
             if(gameState.installationQueue.length > 0) {
-                queueHTML = gameState.installationQueue.map(job => {
-                    const pkg = gameState.servicePackages.find(p => p.id === job.packageId);
-                    return `
-                    <div class="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
-                        <div>
-                            <p class="font-semibold">${pkg.name}</p>
-                            <p class="text-xs text-gray-400">Instalasi Baru</p>
-                        </div>
-                        <button class="install-btn bg-cyan-600 hover:bg-cyan-700 text-xs font-bold py-1 px-3 rounded" data-id="${job.id}">Instal</button>
-                    </div>
-                    `;
-                }).join('');
+                queueHTML = gameState.installationQueue.map(job => `<div class="bg-gray-700 p-3 rounded-lg"><p class="font-semibold">Instalasi ${gameState.servicePackages.find(p=>p.id===job.packageId).name}</p></div>`).join('');
             }
-            container.innerHTML = `
-                <div class="bg-gray-800 p-6 rounded-lg h-full">
-                    <h2 class="text-2xl font-bold mb-4 text-teal-300">Panel Eksekusi (${gameState.installationQueue.length})</h2>
-                    <div class="space-y-2 max-h-60 overflow-y-auto pr-2">${queueHTML}</div>
-                </div>`;
+            container.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg h-full"><h2 class="text-2xl font-bold mb-4 text-teal-300">Panel Eksekusi (${gameState.installationQueue.length})</h2><div class="space-y-2 max-h-60 overflow-y-auto pr-2">${queueHTML}</div></div>`;
         }
         
         function gameLoop() {
             const metrics = calculateMetrics();
-            
-            // 1. Calculate Net Income
-            const netIncomePerTick = (gameState.revenue - gameState.opex) / 30;
-            gameState.balance += netIncomePerTick;
+            gameState.balance += (gameState.revenue - gameState.opex) / 30;
 
-            // 2. Generate new leads
-            if (Math.random() < 0.2) { // 20% chance per second to generate leads
+            if (Math.random() < 0.2) {
                 const marketAttraction = metrics.marketingPower * (metrics.satisfaction / 100);
                 const potentialNewCustomers = Math.floor(metrics.totalCoverage * (marketAttraction / 100) * 0.05);
                 if (potentialNewCustomers > 0) {
                     for(let i = 0; i < potentialNewCustomers; i++) {
-                        if (gameState.leads.length < 20) { // Limit leads queue
+                        if (gameState.leads.length < 20) {
                             const randomPackage = gameState.servicePackages[Math.floor(Math.random() * gameState.servicePackages.length)];
                             gameState.leads.push({ id: Date.now() + Math.random(), packageId: randomPackage.id });
                         }
@@ -391,18 +354,36 @@
                 }
             }
             
-            // 3. Customer Churn
             const churnRate = (100 - metrics.satisfaction) / 5000; 
             Object.keys(gameState.customerDistribution).forEach(pkgId => {
                 const churned = Math.floor(gameState.customerDistribution[pkgId] * churnRate);
                 gameState.customerDistribution[pkgId] -= churned;
             });
-            gameState.customers = Object.values(gameState.customerDistribution).reduce((a, b) => a + b, 0);
+            gameState.customers = Math.floor(Object.values(gameState.customerDistribution).reduce((a, b) => a + b, 0));
             
             render();
         }
+
+        function teamTaskLoop() {
+            // CS Team processes leads
+            const csPower = gameState.teams.cs;
+            for (let i = 0; i < csPower; i++) {
+                if (gameState.leads.length > 0) {
+                    const lead = gameState.leads.shift();
+                    gameState.installationQueue.push(lead);
+                }
+            }
+
+            // Technician Team processes installations
+            const techPower = gameState.teams.teknisi;
+            for (let i = 0; i < techPower; i++) {
+                 if (gameState.installationQueue.length > 0) {
+                    const job = gameState.installationQueue.shift();
+                    gameState.customerDistribution[job.packageId]++;
+                }
+            }
+        }
         
-        // --- EVENT HANDLERS ---
         document.body.addEventListener('click', e => {
             const upgradeButton = e.target.closest('.upgrade-btn');
             if (upgradeButton) {
@@ -413,25 +394,13 @@
                     gameState.upgrades[id] = (gameState.upgrades[id] || 0) + 1;
                 }
             }
-
-            const acceptLeadBtn = e.target.closest('.accept-lead-btn');
-            if(acceptLeadBtn) {
-                const leadId = parseFloat(acceptLeadBtn.dataset.id);
-                const leadIndex = gameState.leads.findIndex(l => l.id === leadId);
-                if (leadIndex > -1) {
-                    const [lead] = gameState.leads.splice(leadIndex, 1);
-                    gameState.installationQueue.push(lead);
-                }
-            }
-            
-            const installBtn = e.target.closest('.install-btn');
-            if(installBtn) {
-                const jobId = parseFloat(installBtn.dataset.id);
-                const jobIndex = gameState.installationQueue.findIndex(j => j.id === jobId);
-                if(jobIndex > -1) {
-                    const [job] = gameState.installationQueue.splice(jobIndex, 1);
-                    gameState.customerDistribution[job.packageId]++;
-                    gameState.customers++;
+            const recruitButton = e.target.closest('.recruit-btn');
+            if (recruitButton) {
+                const id = recruitButton.dataset.id;
+                const cost = getUpgradeCost(id, true);
+                if (gameState.balance >= cost) {
+                    gameState.balance -= cost;
+                    gameState.teams[id]++;
                 }
             }
         });
@@ -442,9 +411,7 @@
                 const field = e.target.dataset.field;
                 const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
                 const pkg = gameState.servicePackages.find(p => p.id === id);
-                if (pkg) {
-                    pkg[field] = value;
-                }
+                if (pkg) { pkg[field] = value; }
             }
         });
 
@@ -453,7 +420,6 @@
             const amount = parseFloat(amountInput.value);
             if (isNaN(amount) || amount <= 0) return alert('Jumlah penarikan tidak valid.');
             if (amount > gameState.balance) return alert('Kas operasional tidak mencukupi.');
-
             gameState.balance -= amount;
             const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
             localStorage.setItem('tycoonWithdrawal', tycoonWithdrawal + amount);
@@ -463,15 +429,14 @@
         
         window.addEventListener('focus', loadState);
         window.addEventListener('storage', (event) => {
-            if (event.key === 'businessGameData') {
-                loadState();
-            }
+            if (event.key === 'businessGameData') { loadState(); }
         });
 
         // --- INIT & LOOP ---
         loadState();
         render();
         setInterval(gameLoop, TICK_INTERVAL);
+        setInterval(teamTaskLoop, 3000); // Team tasks run every 3 seconds
         setInterval(saveState, 5000);
     </script>
 </body>
