@@ -929,18 +929,23 @@
         }
 
         // --- SWAP LOGIC ---
+        function initializeSwapUI() {
+            const allCrypto = Object.keys(assetData.crypto);
+            swapToCoinEl.innerHTML = allCrypto.map(id => `<option value="${id}">${id}</option>`).join('');
+        }
+
         function renderSwapUI() {
             const ownedCrypto = Object.keys(tradingState.portfolio)
                 .filter(key => key.startsWith('crypto_') && tradingState.portfolio[key].quantity > 0)
                 .map(key => key.split('_')[1]);
 
-            const allCrypto = Object.keys(assetData.crypto);
-
-            swapFromCoinEl.innerHTML = ownedCrypto.length > 0 
-                ? ownedCrypto.map(id => `<option value="${id}">${id}</option>`).join('')
-                : '<option>Tidak ada koin</option>';
-            
-            swapToCoinEl.innerHTML = allCrypto.map(id => `<option value="${id}">${id}</option>`).join('');
+            // Check if the options in the dropdown are outdated to prevent re-rendering
+            const currentOptions = Array.from(swapFromCoinEl.options).map(opt => opt.value);
+            if (JSON.stringify(ownedCrypto.sort()) !== JSON.stringify(currentOptions.sort())) {
+                 swapFromCoinEl.innerHTML = ownedCrypto.length > 0 
+                    ? ownedCrypto.map(id => `<option value="${id}">${id}</option>`).join('')
+                    : '<option value="">Tidak ada koin</option>';
+            }
             
             updateSwapPreview();
         }
@@ -1238,11 +1243,11 @@
 
         // --- Initialization ---
         loadState();
+        initializeSwapUI();
         updateAllUI();
         setInterval(gameLoop, 1000); 
         setInterval(saveState, 5000);
     </script>
 </body>
 </html>
-
 
