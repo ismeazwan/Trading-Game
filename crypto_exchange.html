@@ -74,6 +74,7 @@
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="bot">Trading Bot</button>
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="transfer">Transfer</button>
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="withdraw">Tarik Saldo</button>
+                    <a href="crypto_wallet.html" class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2 hover:border-purple-500 hover:text-white">Crypto Wallet</a>
                 </nav>
             </div>
         </div>
@@ -1117,7 +1118,7 @@
         // --- EVENT LISTENERS & HANDLERS ---
         document.querySelector('.container').addEventListener('click', (e) => {
             const tab = e.target.closest('.tab');
-            if (tab) {
+            if (tab && tab.dataset.tab) { // Ensure it's a tab with a dataset, not the new link
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
                 tab.classList.add('active');
@@ -1820,8 +1821,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
