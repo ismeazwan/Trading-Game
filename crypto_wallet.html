@@ -18,7 +18,7 @@
                 <h1 class="text-2xl font-bold">Crypto Wallet Saya</h1>
                  <div class="flex space-x-4 mt-1">
                     <a href="trading_platform.html" class="text-sm text-purple-400 hover:underline">&larr; Ke Platform Trading</a>
-                    <a href="crypto_exchange.html" class="text-sm text-cyan-400 hover:underline">Ke Crypto Exchange &rarr;</a>
+                    <a href="crypto_exchange (2).html" class="text-sm text-cyan-400 hover:underline">Ke Crypto Exchange &rarr;</a>
                 </div>
             </div>
             <div class="text-right mt-4 sm:mt-0">
@@ -103,6 +103,7 @@
     };
     let walletState = {};
     let marketPrices = {};
+    const USD_TO_IDR = 16000; // Kurs konversi untuk harga dari platform trading
 
     // --- ELEMENT CACHING ---
     const totalPortfolioValueEl = document.getElementById('total-portfolio-value');
@@ -233,13 +234,31 @@
             return;
         }
 
-        let totalValue = 0;
+        let totalValueRupiah = 0;
+        
+        // Determine if the primary price source is USD-based (from trading platform)
+        // A simple check on a major coin's price magnitude can determine this.
+        const isUsdSource = (marketPrices['BTC'] && marketPrices['BTC'] < 1000000) || (marketPrices['USDT'] && marketPrices['USDT'] < 1000);
+
         portfolioListEl.innerHTML = coinIds.map(id => {
             const holding = walletState.portfolio[id];
             if(holding.quantity <= 0) return '';
+            
             const price = marketPrices[id]?.price || 0;
-            const value = holding.quantity * price;
-            totalValue += value;
+            let valueInRupiah;
+            let displayPriceInRupiah;
+
+            if (isUsdSource) {
+                // If source is USD, convert price to IDR for all calculations
+                valueInRupiah = holding.quantity * price * USD_TO_IDR;
+                displayPriceInRupiah = price * USD_TO_IDR;
+            } else {
+                // If source is IDR, use prices as is
+                valueInRupiah = holding.quantity * price;
+                displayPriceInRupiah = price;
+            }
+            
+            totalValueRupiah += valueInRupiah;
 
             return `
                 <div class="bg-gray-700/50 p-3 rounded-lg flex justify-between items-center">
@@ -248,14 +267,15 @@
                         <p class="text-sm text-gray-400">${formatLargeNumber(holding.quantity)}</p>
                     </div>
                     <div class="text-right">
-                        <p class="font-semibold">${formatRupiah(value)}</p>
-                        <p class="text-xs text-gray-500">@ ${formatRupiah(price)}</p>
+                        <p class="font-semibold">${formatRupiah(valueInRupiah)}</p>
+                        <p class="text-xs text-gray-500">@ ${formatRupiah(displayPriceInRupiah)}</p>
                     </div>
                 </div>
             `;
         }).join('');
-        totalPortfolioValueEl.textContent = formatRupiah(totalValue);
+        totalPortfolioValueEl.textContent = formatRupiah(totalValueRupiah);
     }
+
 
     function renderHistory() {
         if (walletState.history.length === 0) {
