@@ -322,10 +322,18 @@
                             <label for="transfer-amount" class="text-sm">Jumlah</label>
                             <input id="transfer-amount" type="number" placeholder="0" class="w-full bg-gray-700 p-2 rounded mt-1">
                         </div>
+                        <!-- NEW: Destination Selector -->
+                        <div>
+                            <label for="transfer-destination-select" class="text-sm">Kirim Ke</label>
+                            <select id="transfer-destination-select" class="w-full bg-gray-700 p-2 rounded mt-1">
+                                <option value="trading_platform">Platform Trading</option>
+                                <option value="crypto_wallet">Crypto Wallet</option>
+                            </select>
+                        </div>
                         <p class="text-sm text-gray-400">Dimiliki: <span id="transfer-owned-amount">0</span></p>
                         <p class="text-sm text-gray-400">Biaya Transfer (1%): <span id="transfer-fee">0 Koin</span></p>
                         <p class="text-sm font-semibold">Jumlah Diterima: <span id="transfer-net-amount">0 Koin</span></p>
-                        <button id="execute-transfer-btn" class="w-full bg-purple-600 hover:bg-purple-700 font-bold py-3 px-4 rounded transition duration-200">Transfer ke Platform Trading</button>
+                        <button id="execute-transfer-btn" class="w-full bg-purple-600 hover:bg-purple-700 font-bold py-3 px-4 rounded transition duration-200">Transfer</button>
                     </div>
                 </div>
             </div>
@@ -383,6 +391,7 @@
             </div>
         </div>
     </div>
+    <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 opacity-0"></div>
 
     <script>
         // --- DATA ---
@@ -443,6 +452,15 @@
                 return `Rp ${formatLargeNumber(num)}`;
             }
             return `Rp ${Math.floor(num).toLocaleString('id-ID')}`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 3000);
         }
         
         // --- CORE FUNCTIONS ---
@@ -1521,6 +1539,7 @@
         document.getElementById('execute-transfer-btn').addEventListener('click', () => {
             const coinId = document.getElementById('transfer-coin-select').value;
             const amount = parseFloat(document.getElementById('transfer-amount').value);
+            const destination = document.getElementById('transfer-destination-select').value;
 
             if (!coinId) return alert('Pilih koin untuk ditransfer.');
             if (isNaN(amount) || amount <= 0) return alert('Jumlah transfer tidak valid.');
@@ -1537,7 +1556,8 @@
 
             // Create transfer data
             const transferData = {
-                platform: 'trading_platform',
+                platform: destination,
+                sourcePlatform: 'crypto_exchange',
                 transferId: `transfer-${Date.now()}`,
                 coinId: coinId,
                 amount: amountAfterFee,
@@ -1547,11 +1567,11 @@
             // Store in localStorage for the other platform to pick up
             localStorage.setItem('cryptoTransfer', JSON.stringify(transferData));
             
-            alert(`Transfer ${formatLargeNumber(amount)} ${coinId} berhasil! Jumlah ${formatLargeNumber(amountAfterFee)} ${coinId} akan diterima di Platform Trading.`);
+            alert(`Transfer ${formatLargeNumber(amount)} ${coinId} ke ${destination} berhasil!`);
             
             document.getElementById('transfer-amount').value = '';
             saveState();
-            updateTransferInfo();
+            renderTransferTab();
         });
         
         // --- Swap Listeners ---
@@ -1590,6 +1610,40 @@
             saveState();
             renderSwapTab();
         });
+
+        function checkIncomingTransfers() {
+            const transferDataJSON = localStorage.getItem('cryptoTransfer');
+            if (transferDataJSON) {
+                try {
+                    const transferData = JSON.parse(transferDataJSON);
+                    
+                    if (transferData.platform !== 'crypto_exchange') return;
+
+                    if (!cryptoData[transferData.coinId] && transferData.coinData) {
+                        cryptoData[transferData.coinId] = transferData.coinData;
+                        gameState.marketPrices[transferData.coinId] = { price: transferData.coinData.basePrice, history: Array(50).fill(transferData.coinData.basePrice), pressure: 0 };
+                    }
+
+                    const holding = gameState.portfolio[transferData.coinId] || { quantity: 0, avgPrice: 0 };
+                    const currentPrice = gameState.marketPrices[transferData.coinId]?.price || cryptoData[transferData.coinId].basePrice;
+                    const totalCost = (holding.quantity * holding.avgPrice) + (transferData.amount * currentPrice);
+                    
+                    holding.quantity += transferData.amount;
+                    holding.avgPrice = totalCost / holding.quantity;
+
+                    gameState.portfolio[transferData.coinId] = holding;
+                    
+                    showToast(`Deposit ${formatLargeNumber(transferData.amount)} ${transferData.coinId} dari ${transferData.sourcePlatform} berhasil!`);
+                    
+                    localStorage.removeItem('cryptoTransfer');
+                    saveState();
+                    render();
+                } catch (e) {
+                    console.error("Gagal memproses transfer kripto:", e);
+                    localStorage.removeItem('cryptoTransfer');
+                }
+            }
+        }
 
 
         // --- MARKET SIMULATION & GAME LOOP ---
@@ -1745,6 +1799,7 @@
             updateMarketSimulation();
             processLimitOrders();
             runTradingBot();
+            checkIncomingTransfers();
             
             // Update staking rewards
             for (const id in gameState.stakedAssets) {
@@ -1765,4 +1820,3 @@
     </script>
 </body>
 </html>
-
