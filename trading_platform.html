@@ -205,9 +205,30 @@
                 <p class="text-xs text-gray-500 mt-2">Dana akan dikembalikan ke saldo Idle Tycoon Game Anda.</p>
             </div>
              <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
-                <h2 class="text-xl font-bold mb-2">Upgrades</h2>
-                <div id="upgrades-list" class="space-y-2">
+                <h2 class="text-xl font-bold mb-2">Swap Koin</h2>
+                <div id="swap-container" class="space-y-2">
+                   <div class="space-y-1">
+                        <label class="text-xs text-gray-400">Dari</label>
+                        <div class="flex gap-2">
+                            <select id="swap-from-coin" class="w-full bg-gray-700 p-2 rounded-md text-sm"></select>
+                            <input type="number" id="swap-from-amount" class="w-full bg-gray-700 p-2 rounded-md text-sm" placeholder="Jumlah">
+                        </div>
+                        <p class="text-xs text-gray-500">Dimiliki: <span id="swap-from-balance">0</span></p>
                    </div>
+                   <div class="text-center text-gray-500">&darr;</div>
+                   <div class="space-y-1">
+                        <label class="text-xs text-gray-400">Ke</label>
+                        <div class="flex gap-2">
+                             <select id="swap-to-coin" class="w-full bg-gray-700 p-2 rounded-md text-sm"></select>
+                             <input type="number" id="swap-to-amount" class="w-full bg-gray-700 p-2 rounded-md text-sm" placeholder="Estimasi" disabled>
+                        </div>
+                   </div>
+                   <div class="text-xs text-gray-400 pt-2 space-y-1">
+                        <p class="flex justify-between"><span>Kurs:</span> <span id="swap-rate">Pilih koin</span></p>
+                        <p class="flex justify-between"><span>Biaya (0.2%):</span> <span id="swap-fee">0</span></p>
+                   </div>
+                   <button id="execute-swap-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-2">Swap</button>
+                </div>
             </div>
         </div>
         
@@ -223,7 +244,8 @@
 
     <script>
         // --- ASET DATA & STATE SETUP ---
-        const assetData = {
+        const USD_TO_IDR = 15000; // Exchange rate for display consistency
+        let assetData = {
             stocks: {
                 FOOD: { name: "Saham Makanan", basePrice: 50, volatility: 0.1 },
                 TECH: { name: "Saham Teknologi", basePrice: 200, volatility: 0.3 },
@@ -243,12 +265,12 @@
             crypto: {
                 BTC: { name: "Bitcoin", basePrice: 65000, volatility: 0.5 },
                 ETH: { name: "Ethereum", basePrice: 3500, volatility: 0.6 },
-                USDT: { name: "Tether", basePrice: 1, volatility: 0.001 },
-                USDC: { name: "USD Coin", basePrice: 1, volatility: 0.001 },
                 SOL: { name: "Solana", basePrice: 150, volatility: 0.9 },
-                DOGE: { name: "Dogecoin", basePrice: 0.15, volatility: 1.5 },
-                XRP: { name: "Ripple", basePrice: 0.5, volatility: 1.2 },
-                ADA: { name: "Cardano", basePrice: 0.45, volatility: 1.1 },
+                USDT: { name: "Tether", basePrice: 1, volatility: 0.001, decimals: 4 },
+                USDC: { name: "USD Coin", basePrice: 1, volatility: 0.001, decimals: 4 },
+                DOGE: { name: "Dogecoin", basePrice: 0.15, volatility: 1.5, decimals: 4 },
+                XRP: { name: "Ripple", basePrice: 0.5, volatility: 1.2, decimals: 4 },
+                ADA: { name: "Cardano", basePrice: 0.45, volatility: 1.1, decimals: 4 },
             },
             commodities: {
                 XAU: { name: "Emas", basePrice: 2300, volatility: 0.15 },
@@ -306,8 +328,17 @@
         const sellButton = document.getElementById('sell-button');
         const activeOrdersListEl = document.getElementById('active-orders-list');
         const portfolioListEl = document.getElementById('portfolio-list');
-        const upgradesListEl = document.getElementById('upgrades-list');
         const transactionLogListEl = document.getElementById('transaction-log-list');
+
+        // Swap UI elements
+        const swapFromCoinEl = document.getElementById('swap-from-coin');
+        const swapToCoinEl = document.getElementById('swap-to-coin');
+        const swapFromAmountEl = document.getElementById('swap-from-amount');
+        const swapToAmountEl = document.getElementById('swap-to-amount');
+        const swapFromBalanceEl = document.getElementById('swap-from-balance');
+        const swapRateEl = document.getElementById('swap-rate');
+        const swapFeeEl = document.getElementById('swap-fee');
+        const executeSwapBtn = document.getElementById('execute-swap-btn');
 
         // --- Formatting & State Management ---
         function formatWithSuffix(num, prefix = '') {
@@ -334,7 +365,11 @@
             return `${prefix}${scaled.toFixed(2)} ${suffix}`;
         }
 
-        function formatCurrency(num, decimals) {
+        function formatRupiah(num) {
+            return formatWithSuffix(num, 'Rp ');
+        }
+
+        function formatUSD(num, decimals) {
             // This platform uses USD as base for crypto, so we will use a simplified formatter
             if (num > 1000000) return `$${(num / 1000000).toFixed(2)}M`;
             if (num > 1000) return `$${(num / 1000).toFixed(2)}K`;
@@ -387,67 +422,6 @@
                 console.error("Gagal menyimpan data trading:", e);
             }
         }
-        
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 4000);
-        }
-
-        function checkForTransfers() {
-            const transferDataJSON = localStorage.getItem('cryptoTransfer');
-            if (transferDataJSON) {
-                try {
-                    const transferData = JSON.parse(transferDataJSON);
-                    
-                    if (transferData.platform === 'trading_platform' && transferData.coinId && transferData.amount > 0) {
-                        const { coinId, amount, coinData } = transferData;
-                        
-                        // If coin does not exist on this platform, add it
-                        if (!assetData.crypto[coinId]) {
-                            assetData.crypto[coinId] = {
-                                name: coinData.name,
-                                basePrice: coinData.basePrice / 15000, // Convert from Rp to approx USD
-                                volatility: coinData.volatility,
-                            };
-                            tradingState.marketPrices.crypto[coinId] = assetData.crypto[coinId].basePrice;
-                            tradingState.priceHistory.crypto[coinId] = Array(100).fill(assetData.crypto[coinId].basePrice);
-                            console.log(`Aset baru ${coinId} ditambahkan ke platform.`);
-                        }
-
-                        // Add the amount to the portfolio
-                        const portfolioKey = `crypto_${coinId}`;
-                        const existing = tradingState.portfolio[portfolioKey] || { quantity: 0, totalCost: 0 };
-                        
-                        existing.quantity += amount;
-                        
-                        const currentPrice = tradingState.marketPrices.crypto[coinId] || 0;
-                        existing.totalCost += amount * currentPrice;
-                        
-                        tradingState.portfolio[portfolioKey] = existing;
-                        
-                        showToast(`Deposit diterima: ${formatNumber(amount)} ${coinId}`);
-                        
-                        // Clear the transfer data from localStorage
-                        localStorage.removeItem('cryptoTransfer');
-                        saveState();
-                        
-                        // If the user is on the crypto tab, refresh the list
-                        if (activeAssetTab === 'crypto') {
-                            renderAssetList();
-                        }
-                    } else {
-                        // Data might be for another platform or invalid, remove it
-                        localStorage.removeItem('cryptoTransfer');
-                    }
-                } catch (e) {
-                    console.error("Gagal memproses data transfer:", e);
-                    localStorage.removeItem('cryptoTransfer'); // Clear corrupted data
-                }
-            }
-        }
-
 
         // --- Market & Analysis Engine ---
         function updateMarketPrices() {
@@ -520,7 +494,8 @@
                 const priceChange = price - oldPrice;
                 const color = priceChange >= 0 ? 'text-green-400' : 'text-red-400';
                 
-                const formatter = (p) => formatCurrency(p, asset.decimals);
+                const isUsdBased = activeAssetTab === 'crypto' || activeAssetTab === 'forex';
+                const formatter = isUsdBased ? formatUSD : formatRupiah;
 
                 return `
                     <div class="asset-item cursor-pointer p-2 rounded-md hover:bg-gray-700 flex justify-between items-center" data-id="${id}" data-category="${activeAssetTab}">
@@ -529,7 +504,7 @@
                             <p class="text-xs text-gray-400">${asset.name}</p>
                         </div>
                         <div class="text-right">
-                            <p class="font-semibold ${color}">${formatter(price)}</p>
+                            <p class="font-semibold ${color}">${formatter(price, asset.decimals)}</p>
                         </div>
                     </div>
                 `;
@@ -551,8 +526,11 @@
             const portfolioKey = `${category}_${id}`;
             const owned = tradingState.portfolio[portfolioKey]?.quantity || 0;
             
+            const isUsdBased = category === 'crypto' || category === 'forex';
+            const formatter = isUsdBased ? formatUSD : formatRupiah;
+
             currentAssetNameEl.textContent = `${asset.name} (${id})`;
-            currentAssetPriceEl.textContent = formatCurrency(price, asset.decimals);
+            currentAssetPriceEl.textContent = formatter(price, asset.decimals);
             ownedQuantityEl.textContent = formatNumber(owned);
             
             const analysis = calculateAnalysis(tradingState.priceHistory[category][id]);
@@ -653,14 +631,23 @@
             if (!selectedAsset.id) return;
             const { category, id } = selectedAsset;
             const currentPrice = tradingState.marketPrices[category][id];
+            const isUsdBased = category === 'crypto' || category === 'forex';
             
             const buyPrice = activeTradeType.buy === 'limit' ? (parseFloat(buyLimitPriceInput.value) || 0) : currentPrice;
             const buyQty = parseFloat(buyQuantityInput.value) || 0;
-            buyEstimateEl.textContent = formatCurrency(buyQty * buyPrice);
+            let buyCost = buyQty * buyPrice;
 
             const sellPrice = activeTradeType.sell === 'limit' ? (parseFloat(sellLimitPriceInput.value) || 0) : currentPrice;
             const sellQty = parseFloat(sellQuantityInput.value) || 0;
-            sellEstimateEl.textContent = formatCurrency(sellQty * sellPrice);
+            let sellValue = sellQty * sellPrice;
+
+            if (isUsdBased) {
+                buyCost *= USD_TO_IDR;
+                sellValue *= USD_TO_IDR;
+            }
+
+            buyEstimateEl.textContent = formatRupiah(buyCost);
+            sellEstimateEl.textContent = formatRupiah(sellValue);
         }
 
         function renderPortfolio() {
@@ -676,9 +663,16 @@
                 if (!asset) return '';
                 const currentPrice = tradingState.marketPrices[category]?.[id];
                 if (currentPrice === undefined) return '';
+
+                const isUsdBased = category === 'crypto' || category === 'forex';
+                
                 const currentValue = holdings.quantity * currentPrice;
                 const pnl = currentValue - holdings.totalCost;
-                const pnlColor = pnl >= 0 ? 'text-green-400' : 'text-red-400';
+
+                const displayValue = isUsdBased ? currentValue * USD_TO_IDR : currentValue;
+                const displayPnl = isUsdBased ? pnl * USD_TO_IDR : pnl;
+
+                const pnlColor = displayPnl >= 0 ? 'text-green-400' : 'text-red-400';
                 return `
                 <div class="flex justify-between items-center text-sm py-1 border-b border-gray-700">
                     <div>
@@ -686,11 +680,12 @@
                         <p class="text-xs text-gray-400">Qty: ${formatNumber(holdings.quantity)}</p>
                     </div>
                     <div class="text-right">
-                        <p>${formatCurrency(currentValue, asset.decimals)}</p>
-                        <p class="${pnlColor}">${pnl >= 0 ? '+' : ''}${formatCurrency(pnl, asset.decimals)}</p>
+                        <p>${formatRupiah(displayValue)}</p>
+                        <p class="${pnlColor}">${displayPnl >= 0 ? '+' : ''}${formatRupiah(displayPnl)}</p>
                     </div>
                 </div>`;
             }).join('');
+            renderSwapUI();
         }
 
         function renderActiveOrders() {
@@ -704,11 +699,15 @@
                 if (!asset) return '';
                 const isBuy = order.type === 'buy';
                 const color = isBuy ? 'text-green-400' : 'text-red-400';
+                
+                const isUsdBased = category === 'crypto' || category === 'forex';
+                const formatter = isUsdBased ? formatUSD : formatRupiah;
+
                 return `
                 <div class="bg-gray-800 p-2 rounded-md flex justify-between items-center text-sm">
                     <div>
                         <p class="font-bold ${color}">${isBuy ? 'BELI' : 'JUAL'} ${id}</p>
-                        <p class="text-xs text-gray-400">Qty: ${formatNumber(order.quantity)} @ ${formatCurrency(order.limitPrice, asset.decimals)}</p>
+                        <p class="text-xs text-gray-400">Qty: ${formatNumber(order.quantity)} @ ${formatter(order.limitPrice, asset.decimals)}</p>
                     </div>
                     <button class="cancel-order-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded text-xs" data-order-id="${order.id}">Batalkan</button>
                 </div>`;
@@ -725,15 +724,19 @@
                 const asset = assetData[category]?.[id];
                 if (!asset) return '';
 
+                const isUsdBased = category === 'crypto' || category === 'forex';
+                const formatter = isUsdBased ? formatUSD : formatRupiah;
+                const displayMultiplier = isUsdBased ? USD_TO_IDR : 1;
+
                 if (log.type === 'buy') {
                     return `
                     <div class="bg-gray-900/50 p-3 rounded-lg text-sm flex justify-between items-center">
                         <div>
                             <p class="font-bold text-green-400">BELI ${id}</p>
-                            <p class="text-xs text-gray-400">Qty: ${formatNumber(log.quantity)} @ ${formatCurrency(log.price, asset.decimals)}</p>
+                            <p class="text-xs text-gray-400">Qty: ${formatNumber(log.quantity)} @ ${formatter(log.price, asset.decimals)}</p>
                         </div>
                         <div class="text-right">
-                            <p class="font-semibold">${formatCurrency(log.totalCost, asset.decimals)}</p>
+                            <p class="font-semibold">${formatRupiah(log.totalCost * displayMultiplier)}</p>
                         </div>
                     </div>
                     `;
@@ -743,11 +746,11 @@
                      <div class="bg-gray-900/50 p-3 rounded-lg text-sm flex justify-between items-center">
                         <div>
                             <p class="font-bold text-red-400">JUAL ${id}</p>
-                            <p class="text-xs text-gray-400">Qty: ${formatNumber(log.quantity)} @ ${formatCurrency(log.price, asset.decimals)}</p>
+                            <p class="text-xs text-gray-400">Qty: ${formatNumber(log.quantity)} @ ${formatter(log.price, asset.decimals)}</p>
                         </div>
                         <div class="text-right">
-                            <p class="font-semibold">${formatCurrency(log.totalValue, asset.decimals)}</p>
-                            <p class="text-xs ${pnlColor}">${log.pnl >= 0 ? '+' : ''}${formatCurrency(log.pnl, asset.decimals)} (${log.pnlPercent.toFixed(2)}%)</p>
+                            <p class="font-semibold">${formatRupiah(log.totalValue * displayMultiplier)}</p>
+                            <p class="text-xs ${pnlColor}">${log.pnl >= 0 ? '+' : ''}${formatRupiah(log.pnl * displayMultiplier)} (${log.pnlPercent.toFixed(2)}%)</p>
                         </div>
                     </div>
                     `;
@@ -788,34 +791,36 @@
             const portfolioKey = `${category}_${id}`;
             const quantityInput = type === 'buy' ? buyQuantityInput : sellQuantityInput;
             const quantity = parseFloat(quantityInput.value);
+            const isUsdBased = category === 'crypto' || category === 'forex';
 
             if (isNaN(quantity) || quantity <= 0) return;
             
-            let fee = (quantity * price) * 0.001;
+            let costInRupiah = isUsdBased ? (quantity * price * USD_TO_IDR) : (quantity * price);
+            let fee = costInRupiah * 0.001;
             if (tradingState.upgrades.feeDiscount) {
                 fee *= 0.5;
             }
 
             if (type === 'buy') {
-                const cost = quantity * price + fee;
-                if (tradingState.balance >= cost) {
-                    tradingState.balance -= cost;
+                const totalCostRupiah = costInRupiah + fee;
+                if (tradingState.balance >= totalCostRupiah) {
+                    tradingState.balance -= totalCostRupiah;
                     const existing = tradingState.portfolio[portfolioKey] || { quantity: 0, totalCost: 0 };
                     existing.quantity += quantity;
-                    existing.totalCost += quantity * price; // Cost without fee
+                    existing.totalCost += (quantity * price); // Cost in base currency (USD or IDR)
                     tradingState.portfolio[portfolioKey] = existing;
                     addTransactionToLog({ type: 'buy', assetKey: portfolioKey, quantity, price, totalCost: quantity * price });
                 }
             } else { // sell
                 const existing = tradingState.portfolio[portfolioKey];
                 if (existing && existing.quantity >= quantity) {
-                    const proceeds = (quantity * price) - fee;
+                    const proceedsInRupiah = costInRupiah - fee;
                     const avgPrice = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0;
                     const costOfSoldPortion = quantity * avgPrice;
                     const pnl = (quantity * price) - costOfSoldPortion;
                     const pnlPercent = costOfSoldPortion > 0 ? (pnl / costOfSoldPortion) * 100 : 0;
 
-                    tradingState.balance += proceeds;
+                    tradingState.balance += proceedsInRupiah;
                     existing.totalCost -= costOfSoldPortion;
                     existing.quantity -= quantity;
 
@@ -831,12 +836,15 @@
 
         function placeLimitOrder(type, assetKey, quantity, limitPrice) {
             if (isNaN(quantity) || quantity <= 0 || isNaN(limitPrice) || limitPrice <= 0) return false;
+            
+            const [category, id] = assetKey.split('_');
+            const isUsdBased = category === 'crypto' || category === 'forex';
 
             if (type === 'buy') {
-                const totalCost = quantity * limitPrice;
-                if (tradingState.balance >= totalCost) {
-                    tradingState.balance -= totalCost;
-                    const newOrder = { id: Date.now(), assetKey, type, quantity, limitPrice, reservedCash: totalCost };
+                let costInRupiah = isUsdBased ? quantity * limitPrice * USD_TO_IDR : quantity * limitPrice;
+                if (tradingState.balance >= costInRupiah) {
+                    tradingState.balance -= costInRupiah;
+                    const newOrder = { id: Date.now(), assetKey, type, quantity, limitPrice, reservedCash: costInRupiah };
                     tradingState.limitOrders.push(newOrder);
                     return true;
                 }
@@ -858,6 +866,7 @@
             for (const order of tradingState.limitOrders) {
                 const [category, id] = order.assetKey.split('_');
                 const currentPrice = tradingState.marketPrices[category][id];
+                const isUsdBased = category === 'crypto' || category === 'forex';
 
                 if (order.type === 'buy' && currentPrice <= order.limitPrice) {
                     const price = order.limitPrice; // Execute at limit price
@@ -865,21 +874,26 @@
                     existing.quantity += order.quantity;
                     existing.totalCost += order.quantity * price; 
                     tradingState.portfolio[order.assetKey] = existing;
-                    const actualCost = order.quantity * price;
-                    tradingState.balance += (order.reservedCash - actualCost); 
-                    addTransactionToLog({ type: 'buy', assetKey: order.assetKey, quantity: order.quantity, price, totalCost: actualCost });
+                    
+                    const actualCostInRupiah = isUsdBased ? (order.quantity * price * USD_TO_IDR) : (order.quantity * price);
+                    tradingState.balance += (order.reservedCash - actualCostInRupiah); 
+                    
+                    addTransactionToLog({ type: 'buy', assetKey: order.assetKey, quantity: order.quantity, price, totalCost: order.quantity * price });
                     executedOrderIds.add(order.id);
+
                 } else if (order.type === 'sell' && currentPrice >= order.limitPrice) {
                     const price = order.limitPrice; // Execute at limit price
-                    const proceeds = order.quantity * price;
-                    const avgPrice = (tradingState.portfolio[order.assetKey]?.totalCost || 0) / (tradingState.portfolio[order.assetKey]?.quantity || 1); // Get avg price before this sale
+                    const proceedsInBase = order.quantity * price;
+                    const proceedsInRupiah = isUsdBased ? proceedsInBase * USD_TO_IDR : proceedsInBase;
+
+                    const avgPrice = (tradingState.portfolio[order.assetKey]?.totalCost || 0) / (tradingState.portfolio[order.assetKey]?.quantity || 1); 
                     const costOfSoldPortion = order.reservedAsset * avgPrice;
-                    const pnl = proceeds - costOfSoldPortion;
+                    const pnl = proceedsInBase - costOfSoldPortion;
                     const pnlPercent = costOfSoldPortion > 0 ? (pnl / costOfSoldPortion) * 100 : 0;
                     
-                    tradingState.balance += proceeds;
+                    tradingState.balance += proceedsInRupiah;
                     
-                    addTransactionToLog({ type: 'sell', assetKey: order.assetKey, quantity: order.quantity, price, totalValue: proceeds, pnl, pnlPercent });
+                    addTransactionToLog({ type: 'sell', assetKey: order.assetKey, quantity: order.quantity, price, totalValue: proceedsInBase, pnl, pnlPercent });
                     executedOrderIds.add(order.id);
                 }
             }
@@ -909,16 +923,122 @@
             saveState();
         }
 
+        // --- SWAP LOGIC ---
+        function renderSwapUI() {
+            const ownedCrypto = Object.keys(tradingState.portfolio)
+                .filter(key => key.startsWith('crypto_') && tradingState.portfolio[key].quantity > 0)
+                .map(key => key.split('_')[1]);
+
+            const allCrypto = Object.keys(assetData.crypto);
+
+            swapFromCoinEl.innerHTML = ownedCrypto.length > 0 
+                ? ownedCrypto.map(id => `<option value="${id}">${id}</option>`).join('')
+                : '<option>Tidak ada koin</option>';
+            
+            swapToCoinEl.innerHTML = allCrypto.map(id => `<option value="${id}">${id}</option>`).join('');
+            
+            updateSwapPreview();
+        }
+
+        function updateSwapPreview() {
+            const fromId = swapFromCoinEl.value;
+            const toId = swapToCoinEl.value;
+            const fromAmount = parseFloat(swapFromAmountEl.value) || 0;
+
+            const fromPortfolioKey = `crypto_${fromId}`;
+            const owned = tradingState.portfolio[fromPortfolioKey]?.quantity || 0;
+            swapFromBalanceEl.textContent = formatNumber(owned);
+            
+            if (!fromId || !toId || fromAmount <= 0 || fromId === toId) {
+                swapToAmountEl.value = '';
+                swapRateEl.textContent = 'Pilih koin';
+                swapFeeEl.textContent = '0';
+                return;
+            }
+
+            const fromPrice = tradingState.marketPrices.crypto[fromId];
+            const toPrice = tradingState.marketPrices.crypto[toId];
+            
+            if (fromPrice > 0 && toPrice > 0) {
+                const rate = fromPrice / toPrice;
+                const fee = fromAmount * 0.002;
+                const netFromAmount = fromAmount - fee;
+                const toAmount = netFromAmount * rate;
+
+                swapRateEl.textContent = `1 ${fromId} ≈ ${formatNumber(rate)} ${toId}`;
+                swapFeeEl.textContent = `${formatNumber(fee)} ${fromId}`;
+                swapToAmountEl.value = formatNumber(toAmount);
+            }
+        }
+
+        function executeSwap() {
+            const fromId = swapFromCoinEl.value;
+            const toId = swapToCoinEl.value;
+            const fromAmount = parseFloat(swapFromAmountEl.value) || 0;
+
+            if (!fromId || !toId || fromAmount <= 0 || fromId === toId) {
+                alert("Input swap tidak valid.");
+                return;
+            }
+
+            const fromPortfolioKey = `crypto_${fromId}`;
+            const toPortfolioKey = `crypto_${toId}`;
+            const fromHolding = tradingState.portfolio[fromPortfolioKey];
+
+            if (!fromHolding || fromHolding.quantity < fromAmount) {
+                alert("Saldo tidak mencukupi.");
+                return;
+            }
+
+            const fromPrice = tradingState.marketPrices.crypto[fromId];
+            const toPrice = tradingState.marketPrices.crypto[toId];
+
+            const rate = fromPrice / toPrice;
+            const fee = fromAmount * 0.002;
+            const netFromAmount = fromAmount - fee;
+            const toAmount = netFromAmount * rate;
+            
+            // Deduct 'from' coin
+            const fromAvgPrice = fromHolding.totalCost / fromHolding.quantity;
+            const costOfSoldPortion = fromAmount * fromAvgPrice;
+            fromHolding.quantity -= fromAmount;
+            fromHolding.totalCost -= costOfSoldPortion;
+            if (fromHolding.quantity < 1e-9) {
+                delete tradingState.portfolio[fromPortfolioKey];
+            }
+
+            // Add 'to' coin
+            const toHolding = tradingState.portfolio[toPortfolioKey] || { quantity: 0, totalCost: 0 };
+            toHolding.quantity += toAmount;
+            // The cost of the new coins is the value of the coins swapped for them
+            toHolding.totalCost += netFromAmount * fromPrice;
+            tradingState.portfolio[toPortfolioKey] = toHolding;
+
+            // Log transactions
+            addTransactionToLog({ type: 'sell', assetKey: fromPortfolioKey, quantity: fromAmount, price: fromPrice, totalValue: fromAmount * fromPrice, pnl: 0, pnlPercent: 0 });
+            addTransactionToLog({ type: 'buy', assetKey: toPortfolioKey, quantity: toAmount, price: toPrice, totalCost: toAmount * toPrice });
+            
+            showToast(`Swap ${formatNumber(fromAmount)} ${fromId} ke ${formatNumber(toAmount)} ${toId} berhasil!`);
+            swapFromAmountEl.value = '';
+            updateAllUI();
+            saveState();
+        }
+
+
         // --- Global UI & Game Loop ---
         function updateAllUI() {
             const portfolioVal = Object.keys(tradingState.portfolio).reduce((sum, key) => {
                 const [category, id] = key.split('_');
                 const holdings = tradingState.portfolio[key];
-                const currentPrice = tradingState.marketPrices[category]?.[id];
-                return sum + (holdings.quantity * (currentPrice || 0));
+                const currentPrice = tradingState.marketPrices[category]?.[id] || 0;
+                let assetValue = holdings.quantity * currentPrice;
+                if (category === 'crypto' || category === 'forex') {
+                    assetValue *= USD_TO_IDR;
+                }
+                return sum + assetValue;
             }, 0);
-            balanceEl.textContent = formatCurrency(tradingState.balance);
-            portfolioValueEl.textContent = formatCurrency(portfolioVal);
+            balanceEl.textContent = formatRupiah(tradingState.balance);
+            portfolioValueEl.textContent = formatRupiah(portfolioVal);
             renderAssetList();
             renderPortfolio();
             renderActiveOrders();
@@ -929,7 +1049,7 @@
         function gameLoop() {
             updateMarketPrices();
             checkLimitOrders();
-            checkForTransfers();
+            checkCryptoTransfers();
             updateAllUI();
         }
         
@@ -937,9 +1057,11 @@
             if(!selectedAsset.id) return;
             const { category, id } = selectedAsset;
             const price = tradingState.marketPrices[category][id];
+            const isUsdBased = category === 'crypto' || category === 'forex';
             
             if(type === 'buy') {
-                const maxBuyable = price > 0 ? tradingState.balance / price : 0;
+                const priceInRupiah = isUsdBased ? price * USD_TO_IDR : price;
+                const maxBuyable = priceInRupiah > 0 ? tradingState.balance / priceInRupiah : 0;
                 const quantity = maxBuyable * percentage;
                 buyQuantityInput.value = quantity;
             } else if (type === 'sell') {
@@ -950,6 +1072,54 @@
             }
             updateEstimates();
         }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function checkCryptoTransfers() {
+            const transferDataJSON = localStorage.getItem('cryptoTransfer');
+            if (transferDataJSON) {
+                try {
+                    const transferData = JSON.parse(transferDataJSON);
+                    
+                    if (transferData.platform !== 'trading_platform') return;
+
+                    // Add coin to assetData if it's new
+                    if (!assetData.crypto[transferData.coinId]) {
+                        assetData.crypto[transferData.coinId] = transferData.coinData;
+                         // Initialize price history for the new coin
+                        tradingState.marketPrices.crypto[transferData.coinId] = transferData.coinData.basePrice;
+                        tradingState.priceHistory.crypto[transferData.coinId] = Array(100).fill(transferData.coinData.basePrice);
+                    }
+
+                    // Add transferred amount to portfolio
+                    const portfolioKey = `crypto_${transferData.coinId}`;
+                    const existing = tradingState.portfolio[portfolioKey] || { quantity: 0, totalCost: 0 };
+                    existing.quantity += transferData.amount;
+                    
+                    // Estimate cost based on current market price for simplicity
+                    const currentPrice = tradingState.marketPrices.crypto[transferData.coinId] || transferData.coinData.basePrice;
+                    existing.totalCost += transferData.amount * currentPrice;
+
+                    tradingState.portfolio[portfolioKey] = existing;
+
+                    showToast(`Deposit ${formatNumber(transferData.amount)} ${transferData.coinId} berhasil!`);
+                    localStorage.removeItem('cryptoTransfer'); // Clear after processing
+                    saveState();
+                    updateAllUI();
+                } catch (e) {
+                    console.error("Gagal memproses transfer kripto:", e);
+                    localStorage.removeItem('cryptoTransfer');
+                }
+            }
+        }
+
 
         // --- Event Listeners ---
         document.querySelector('.container').addEventListener('click', (e) => {
@@ -962,10 +1132,10 @@
              if (assetTab) {
                 activeAssetTab = assetTab.dataset.tab;
                 document.querySelectorAll('.asset-tab-button').forEach(btn => {
-                    btn.classList.remove('border-purple-500', 'bg-gray-700');
+                    btn.classList.remove('border-purple-500');
                     btn.classList.add('border-transparent');
                 });
-                assetTab.classList.add('border-purple-500', 'bg-gray-700');
+                assetTab.classList.add('border-purple-500');
                 assetTab.classList.remove('border-transparent');
                 renderAssetList();
                 return;
@@ -1034,7 +1204,7 @@
             const tycoonWithdrawal = parseFloat(localStorage.getItem('tycoonWithdrawal') || '0');
             localStorage.setItem('tycoonWithdrawal', tycoonWithdrawal + amount);
         
-            alert(`Dana sebesar ${formatCurrency(amount)} berhasil ditarik dan akan dikembalikan ke Idle Tycoon.`);
+            alert(`Dana sebesar ${formatRupiah(amount)} berhasil ditarik dan akan dikembalikan ke Idle Tycoon.`);
             
             saveState();
             updateAllUI();
@@ -1044,6 +1214,13 @@
         document.getElementById('withdraw-max-button').addEventListener('click', () => {
              document.getElementById('withdraw-amount').value = tradingState.balance;
         });
+
+        // Swap listeners
+        swapFromCoinEl.addEventListener('change', updateSwapPreview);
+        swapToCoinEl.addEventListener('change', updateSwapPreview);
+        swapFromAmountEl.addEventListener('input', updateSwapPreview);
+        executeSwapBtn.addEventListener('click', executeSwap);
+
 
         // --- Initialization ---
         loadState();
