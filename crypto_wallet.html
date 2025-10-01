@@ -148,19 +148,19 @@
     // --- CORE LOGIC ---
     function syncMarketPrices() {
         try {
-            // Sync from both exchange and trading platform for wider price coverage
+            // Fetch prices from both platforms
             const exchangeData = JSON.parse(localStorage.getItem('cryptoExchangeData'));
-            if (exchangeData && exchangeData.marketPrices) {
-                marketPrices = {...marketPrices, ...exchangeData.marketPrices };
-            }
-
             const tradingPlatformData = JSON.parse(localStorage.getItem('tradingPlatformSaveData'));
-            if (tradingPlatformData && tradingPlatformData.marketPrices && tradingPlatformData.marketPrices.crypto) {
-                marketPrices = {...marketPrices, ...tradingPlatformData.marketPrices.crypto };
-            }
+
+            const exchangePrices = (exchangeData && exchangeData.marketPrices) ? exchangeData.marketPrices : {};
+            const platformPrices = (tradingPlatformData && tradingPlatformData.marketPrices && tradingPlatformData.marketPrices.crypto) ? tradingPlatformData.marketPrices.crypto : {};
+
+            // Combine prices, giving priority to Trading Platform for shared coins.
+            // This ensures the wallet reflects the prices from the professional trading chart.
+            marketPrices = { ...exchangePrices, ...platformPrices };
 
         } catch (e) {
-            console.warn("Could not sync market prices.");
+            console.warn("Could not sync market prices.", e);
         }
     }
     
