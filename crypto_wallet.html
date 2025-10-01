@@ -8,406 +8,355 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .tab.active { border-color: #3b82f6; background-color: #374151; }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
 
-    <div class="container mx-auto p-4 max-w-4xl">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-blue-400">Dompet Kripto Terdesentralisasi</h1>
-            <p class="text-gray-400">Satu tempat untuk semua aset digital Anda.</p>
+    <div class="container mx-auto p-4 max-w-6xl">
+        <header class="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold">Crypto Wallet Saya</h1>
+                <p class="text-sm text-purple-400">Pusat aset digital Anda</p>
+            </div>
+            <div class="text-right mt-4 sm:mt-0">
+                <p class="text-gray-400 text-sm">Total Nilai Aset</p>
+                <p id="total-portfolio-value" class="text-3xl font-bold text-cyan-400">Rp 0</p>
+            </div>
+             <div>
+                <button id="reset-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 text-xs sm:text-sm rounded mt-2 sm:mt-0">Reset Wallet</button>
+            </div>
         </header>
 
-        <div class="glass-card p-6 rounded-xl mb-8">
-            <p class="text-gray-400 text-sm">Total Nilai Aset Gabungan</p>
-            <p id="total-portfolio-value" class="text-4xl font-bold text-cyan-300">Rp 0</p>
-            <div class="mt-4 text-xs text-gray-500">
-                <p>Wallet: <span id="wallet-value">Rp 0</span></p>
-                <p>Exchange: <span id="exchange-value">Rp 0</span></p>
-                <p>Trading Platform: <span id="trading-platform-value">Rp 0</span></p>
-            </div>
-        </div>
-
-        <div class="mb-6 border-b border-gray-700">
-            <nav class="flex space-x-4">
-                <button class="tab active py-2 px-4 text-sm font-medium border-b-2" data-tab="portfolio">Portofolio Gabungan</button>
-                <button class="tab border-transparent py-2 px-4 text-sm font-medium border-b-2" data-tab="send">Kirim</button>
-                <button class="tab border-transparent py-2 px-4 text-sm font-medium border-b-2" data-tab="receive">Terima</button>
-                <button class="tab border-transparent py-2 px-4 text-sm font-medium border-b-2" data-tab="history">Riwayat</button>
-            </nav>
-        </div>
-
-        <main>
-            <!-- Portfolio Tab -->
-            <div id="portfolio-tab" class="tab-content">
-                <h2 class="text-xl font-bold mb-4">Aset Anda</h2>
-                <div id="unified-portfolio-list" class="space-y-3 max-h-96 overflow-y-auto">
-                    <p class="text-gray-500">Membaca data aset...</p>
-                </div>
-            </div>
-
-            <!-- Send Tab -->
-            <div id="send-tab" class="tab-content hidden">
-                <div class="bg-gray-800 p-6 rounded-lg max-w-md mx-auto">
-                    <h2 class="text-xl font-bold mb-4 text-center">Kirim Aset</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="send-coin-select" class="text-sm">Aset (dari Wallet)</label>
-                            <select id="send-coin-select" class="w-full bg-gray-700 p-2 rounded mt-1"></select>
-                            <p class="text-xs text-gray-400 mt-1">Dimiliki di Wallet: <span id="send-owned-amount">0</span></p>
-                        </div>
-                        <div>
-                            <label for="send-amount" class="text-sm">Jumlah</label>
-                            <input id="send-amount" type="number" placeholder="0" class="w-full bg-gray-700 p-2 rounded mt-1">
-                        </div>
-                        <div>
-                            <label for="send-destination-select" class="text-sm">Tujuan</label>
-                            <select id="send-destination-select" class="w-full bg-gray-700 p-2 rounded mt-1">
-                                <option value="crypto_exchange">Crypto Exchange</option>
-                                <option value="trading_platform">Trading Platform</option>
-                            </select>
-                        </div>
-                        <p class="text-sm text-yellow-400">Biaya Jaringan: <span id="send-fee">0</span></p>
-                        <button id="execute-send-btn" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-3 px-4 rounded transition duration-200">Kirim Sekarang</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Receive Tab -->
-            <div id="receive-tab" class="tab-content hidden">
-                 <div class="bg-gray-800 p-6 rounded-lg max-w-md mx-auto text-center">
-                    <h2 class="text-xl font-bold mb-4">Alamat Wallet Anda</h2>
-                    <div class="bg-gray-900 p-4 rounded-md break-words text-center font-mono text-sm" id="wallet-address">
-                    </div>
-                    <button id="copy-address-btn" class="mt-4 bg-gray-600 hover:bg-gray-500 font-bold py-2 px-4 rounded">Salin Alamat</button>
-                    <p class="text-xs text-gray-500 mt-4">Gunakan alamat ini untuk menerima aset dari platform lain.</p>
-                </div>
-            </div>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
             
-            <!-- History Tab -->
-            <div id="history-tab" class="tab-content hidden">
-                 <h2 class="text-xl font-bold mb-4">Riwayat Transaksi Wallet</h2>
-                 <div id="transaction-history-list" class="space-y-2 max-h-96 overflow-y-auto">
-                    <p class="text-gray-500">Tidak ada riwayat transaksi.</p>
-                 </div>
+            <!-- Kolom Portofolio -->
+            <div class="lg:col-span-3 bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-4">Aset Saya</h2>
+                <div id="portfolio-list" class="space-y-3 max-h-[60vh] overflow-y-auto">
+                    <p class="text-gray-500">Dompet Anda kosong. Terima koin dari platform lain untuk memulai.</p>
+                </div>
             </div>
-        </main>
-         <div class="text-center mt-8">
-             <button id="reset-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 text-xs rounded">Reset Wallet</button>
-         </div>
+
+            <!-- Kolom Aksi -->
+            <div class="lg:col-span-2 bg-gray-800 p-4 rounded-lg shadow-lg">
+                <div class="border-b border-gray-700 mb-4">
+                    <nav class="flex space-x-4" id="action-tabs">
+                        <button class="action-tab-btn active py-2 px-4 text-sm font-medium border-b-2 border-purple-500" data-tab="send">Kirim</button>
+                        <button class="action-tab-btn py-2 px-4 text-sm font-medium border-b-2 border-transparent text-gray-400" data-tab="receive">Terima</button>
+                    </nav>
+                </div>
+                
+                <!-- Panel Kirim -->
+                <div id="send-panel" class="space-y-4">
+                    <h3 class="text-lg font-semibold">Kirim Aset</h3>
+                    <div>
+                        <label class="text-sm text-gray-400">Aset</label>
+                        <select id="send-coin-select" class="w-full bg-gray-700 p-2 rounded mt-1"></select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-400">Jumlah</label>
+                        <input id="send-amount" type="number" placeholder="0" class="w-full bg-gray-700 p-2 rounded mt-1">
+                        <p class="text-xs text-gray-500 mt-1">Dimiliki: <span id="send-owned-balance">0</span></p>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-400">Ke Platform</label>
+                        <select id="send-destination-select" class="w-full bg-gray-700 p-2 rounded mt-1">
+                            <option value="crypto_exchange">Crypto Exchange</option>
+                            <option value="trading_platform">Trading Platform</option>
+                        </select>
+                    </div>
+                    <button id="execute-send-btn" class="w-full bg-purple-600 hover:bg-purple-700 font-bold py-3 rounded transition duration-200">Kirim Sekarang</button>
+                </div>
+
+                <!-- Panel Terima -->
+                <div id="receive-panel" class="hidden text-center space-y-4 pt-8">
+                     <h3 class="text-lg font-semibold">Alamat Wallet Anda</h3>
+                     <div class="bg-gray-900 p-4 rounded-lg break-words">
+                         <p id="wallet-address" class="text-sm text-green-400"></p>
+                     </div>
+                     <p class="text-xs text-gray-500">Gunakan alamat ini untuk menerima aset dari platform lain.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Riwayat Transaksi -->
+        <div class="mt-4 bg-gray-800 p-4 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Riwayat Transaksi</h2>
+            <div id="history-list" class="space-y-2 max-h-64 overflow-y-auto">
+                <p class="text-gray-500">Belum ada transaksi.</p>
+            </div>
+        </div>
     </div>
+    
+    <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 opacity-0"></div>
 
     <script>
-        // --- DATA & STATE ---
-        let walletState = {
-            address: '',
-            portfolio: {},
-            history: []
-        };
-        let exchangeState = {};
-        let tradingState = {};
-        let allCryptoData = {};
+    // --- STATE & SETUP ---
+    const defaultWalletState = {
+        portfolio: {}, // e.g., { BTC: { quantity: 1.5 }, ETH: { quantity: 0.5 } }
+        history: [],   // e.g., { id, type, coinId, amount, source/dest, date }
+        walletAddress: ''
+    };
+    let walletState = {};
+    let marketPrices = {};
 
-        // --- FORMATTERS ---
-        function formatLargeNumber(num) {
-            if (isNaN(num)) return '0';
-            if (num < 1000) return num.toLocaleString('id-ID', { maximumFractionDigits: 8 });
-            const suffixes = ['', ' Rb', ' Jt', ' M', ' T'];
-            const i = Math.floor(Math.log10(num) / 3);
-            if (i >= suffixes.length) return num.toExponential(2);
-            return (num / Math.pow(1000, i)).toFixed(2).replace(/\.0+$/, '') + suffixes[i];
+    // --- ELEMENT CACHING ---
+    const totalPortfolioValueEl = document.getElementById('total-portfolio-value');
+    const portfolioListEl = document.getElementById('portfolio-list');
+    const historyListEl = document.getElementById('history-list');
+    const sendCoinSelect = document.getElementById('send-coin-select');
+    const sendAmountInput = document.getElementById('send-amount');
+    const sendOwnedBalanceEl = document.getElementById('send-owned-balance');
+    const sendDestinationSelect = document.getElementById('send-destination-select');
+    const executeSendBtn = document.getElementById('execute-send-btn');
+    const walletAddressEl = document.getElementById('wallet-address');
+
+    // --- FORMATTERS ---
+    function formatLargeNumber(num) {
+        if (isNaN(num)) return '0';
+        if (num > 0 && num < 1000) return num.toLocaleString('id-ID', { maximumFractionDigits: 8 });
+        const suffixes = ['', ' Rb', ' Jt', ' M', ' T', ' Ku'];
+        const i = num === 0 ? 0 : Math.floor(Math.log10(Math.abs(num)) / 3);
+        if (i >= suffixes.length) return num.toExponential(2);
+        const value = (num / Math.pow(1000, i));
+        return value.toFixed(2).replace(/\.0+$/, '') + suffixes[i];
+    }
+    function formatRupiah(num) {
+        if (isNaN(num)) num = 0;
+        return `Rp ${formatLargeNumber(num)}`;
+    }
+
+    // --- STATE MANAGEMENT ---
+    function loadState() {
+        const saved = localStorage.getItem('cryptoWalletSaveData');
+        walletState = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultWalletState));
+        if (!walletState.walletAddress) {
+            walletState.walletAddress = 'W' + Date.now().toString(36) + Math.random().toString(36).substr(2).toUpperCase();
         }
+    }
 
-        function formatRupiah(num) {
-            if (isNaN(num)) return 'Rp 0';
-            return `Rp ${formatLargeNumber(num)}`;
-        }
+    function saveState() {
+        localStorage.setItem('cryptoWalletSaveData', JSON.stringify(walletState));
+    }
 
-        // --- CORE FUNCTIONS ---
-        function loadAllStates() {
-            // Load Wallet State
-            const savedWallet = localStorage.getItem('cryptoWalletData');
-            if (savedWallet) {
-                walletState = JSON.parse(savedWallet);
-            } else {
-                walletState.address = '0x' + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+    // --- CORE LOGIC ---
+    function syncMarketPrices() {
+        try {
+            const exchangeData = JSON.parse(localStorage.getItem('cryptoExchangeData'));
+            if (exchangeData && exchangeData.marketPrices) {
+                marketPrices = exchangeData.marketPrices;
             }
-
-            // Load Exchange State
-            const savedExchange = localStorage.getItem('cryptoExchangeData');
-            if (savedExchange) {
-                exchangeState = JSON.parse(savedExchange);
-                // Load coin data from exchange
-                 Object.keys(exchangeState.createdCoins || {}).forEach(id => {
-                    if(!allCryptoData[id]) allCryptoData[id] = exchangeState.createdCoins[id];
-                });
-            }
-
-            // Load Trading Platform State
-            const savedTrading = localStorage.getItem('tradingPlatformSaveData');
-            if (savedTrading) {
-                tradingState = JSON.parse(savedTrading);
-            }
+        } catch (e) {
+            console.warn("Could not sync market prices from exchange.");
         }
+    }
+    
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.opacity = '1';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+        }, 3000);
+    }
 
-        function saveWalletState() {
-            localStorage.setItem('cryptoWalletData', JSON.stringify(walletState));
-        }
-
-        // --- RENDER FUNCTIONS ---
-        function renderAll() {
-            renderPortfolio();
-            renderSendTab();
-            renderReceiveTab();
-            renderHistoryTab();
-        }
-
-        function renderPortfolio() {
-            const unifiedPortfolio = {};
-            let totalValue = 0;
-            let walletValue = 0, exchangeValue = 0, tradingValue = 0;
-
-            const marketPrices = exchangeState.marketPrices || {};
-
-            // 1. Process Wallet Portfolio
-            for (const id in walletState.portfolio) {
-                const holding = walletState.portfolio[id];
-                if (!unifiedPortfolio[id]) unifiedPortfolio[id] = { quantity: 0, locations: [] };
-                unifiedPortfolio[id].quantity += holding.quantity;
-                unifiedPortfolio[id].locations.push({ name: 'Wallet', amount: holding.quantity });
-                const price = marketPrices[id]?.price || 0;
-                walletValue += holding.quantity * price;
-            }
-
-            // 2. Process Exchange Portfolio
-            for (const id in exchangeState.portfolio) {
-                const holding = exchangeState.portfolio[id];
-                if (!unifiedPortfolio[id]) unifiedPortfolio[id] = { quantity: 0, locations: [] };
-                unifiedPortfolio[id].quantity += holding.quantity;
-                unifiedPortfolio[id].locations.push({ name: 'Exchange', amount: holding.quantity });
-                 const price = marketPrices[id]?.price || 0;
-                exchangeValue += holding.quantity * price;
-            }
-
-            // 3. Process Trading Platform Portfolio
-            for (const key in tradingState.portfolio) {
-                if (key.startsWith('crypto_')) {
-                    const id = key.split('_')[1];
-                    const holding = tradingState.portfolio[key];
-                    if (!unifiedPortfolio[id]) unifiedPortfolio[id] = { quantity: 0, locations: [] };
-                    unifiedPortfolio[id].quantity += holding.quantity;
-                    unifiedPortfolio[id].locations.push({ name: 'Trading', amount: holding.quantity });
-                    const price = (tradingState.marketPrices?.crypto?.[id] || 0) * 15000; // Convert USD to IDR
-                    tradingValue += holding.quantity * price;
-                }
-            }
-            
-            totalValue = walletValue + exchangeValue + tradingValue;
-            document.getElementById('total-portfolio-value').textContent = formatRupiah(totalValue);
-            document.getElementById('wallet-value').textContent = formatRupiah(walletValue);
-            document.getElementById('exchange-value').textContent = formatRupiah(exchangeValue);
-            document.getElementById('trading-platform-value').textContent = formatRupiah(tradingValue);
-
-            const listEl = document.getElementById('unified-portfolio-list');
-            if (Object.keys(unifiedPortfolio).length === 0) {
-                listEl.innerHTML = '<p class="text-gray-500">Anda tidak memiliki aset kripto.</p>';
-                return;
-            }
-
-            listEl.innerHTML = Object.keys(unifiedPortfolio).sort().map(id => {
-                const asset = unifiedPortfolio[id];
-                const coinName = allCryptoData[id]?.name || exchangeState.createdCoins?.[id]?.name || id;
-                const locationsHTML = asset.locations.map(loc => `<span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">${loc.name}: ${formatLargeNumber(loc.amount)}</span>`).join(' ');
-                
-                return `
-                <div class="glass-card p-4 rounded-lg flex justify-between items-center">
-                    <div>
-                        <p class="font-bold text-lg">${coinName} (${id})</p>
-                        <p class="text-2xl font-semibold">${formatLargeNumber(asset.quantity)}</p>
-                    </div>
-                    <div class="text-right text-xs space-x-1">
-                        ${locationsHTML}
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function renderSendTab() {
-            const ownedInWallet = Object.keys(walletState.portfolio).filter(id => walletState.portfolio[id].quantity > 0);
-            const selectEl = document.getElementById('send-coin-select');
-            
-            selectEl.innerHTML = ownedInWallet.length > 0
-                ? ownedInWallet.map(id => `<option value="${id}">${allCryptoData[id]?.name || id} (${id})</option>`).join('')
-                : '<option value="">Tidak ada aset di wallet</option>';
-            
-            updateSendInfo();
-        }
-
-        function updateSendInfo() {
-            const selectedCoinId = document.getElementById('send-coin-select').value;
-            const owned = walletState.portfolio[selectedCoinId]?.quantity || 0;
-            document.getElementById('send-owned-amount').textContent = formatLargeNumber(owned);
-            // Simple fee simulation
-            const amount = parseFloat(document.getElementById('send-amount').value) || 0;
-            document.getElementById('send-fee').textContent = `${amount * 0.001} ${selectedCoinId || ''}`;
-        }
-        
-        function renderReceiveTab() {
-            document.getElementById('wallet-address').textContent = walletState.address;
-        }
-
-        function renderHistoryTab() {
-            const listEl = document.getElementById('transaction-history-list');
-             if (walletState.history.length === 0) {
-                listEl.innerHTML = '<p class="text-gray-500">Tidak ada riwayat transaksi.</p>';
-                return;
-            }
-            listEl.innerHTML = [...walletState.history].reverse().map(tx => {
-                const isIncoming = tx.type === 'receive';
-                const color = isIncoming ? 'text-green-400' : 'text-red-400';
-                const sign = isIncoming ? '+' : '-';
-                const fromTo = isIncoming ? `Dari: ${tx.source}` : `Ke: ${tx.destination}`;
-
-                return `
-                <div class="bg-gray-800 p-3 rounded-lg flex justify-between items-center text-sm">
-                    <div>
-                        <p class="font-bold ${color}">${isIncoming ? 'Diterima' : 'Terkirim'}</p>
-                        <p class="text-xs text-gray-400">${fromTo}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-semibold ${color}">${sign} ${formatLargeNumber(tx.amount)} ${tx.coinId}</p>
-                        <p class="text-xs text-gray-500">${new Date(tx.timestamp).toLocaleString('id-ID')}</p>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        // --- LOGIC ---
-        function checkTransfers() {
-            const transferJSON = localStorage.getItem('cryptoTransfer');
-            if (transferJSON) {
+    function checkIncomingTransfers() {
+        const transferJSON = localStorage.getItem('cryptoTransfer');
+        if (transferJSON) {
+            try {
                 const transfer = JSON.parse(transferJSON);
-                if (transfer.destination === 'crypto_wallet') {
-                    // Process deposit
+                if (transfer.platform === 'crypto_wallet') {
+                    // Add to portfolio
                     const holding = walletState.portfolio[transfer.coinId] || { quantity: 0 };
                     holding.quantity += transfer.amount;
                     walletState.portfolio[transfer.coinId] = holding;
 
                     // Add to history
-                    walletState.history.push({
-                        type: 'receive',
-                        source: transfer.source.replace('_', ' '),
+                    const sourcePlatform = transfer.sourcePlatform === 'crypto_exchange' ? 'Exchange' : 'Trading Platform';
+                    walletState.history.unshift({
+                        id: transfer.transferId,
+                        type: 'in',
                         coinId: transfer.coinId,
                         amount: transfer.amount,
-                        timestamp: Date.now()
+                        source: sourcePlatform,
+                        date: new Date().toISOString()
                     });
-                    
-                    if(!allCryptoData[transfer.coinId]) {
-                        allCryptoData[transfer.coinId] = transfer.coinData;
-                    }
 
-                    saveWalletState();
+                    localStorage.removeItem('cryptoTransfer');
+                    saveState();
                     renderAll();
-                    localStorage.removeItem('cryptoTransfer'); // Consume transfer
+                    showToast(`Menerima ${formatLargeNumber(transfer.amount)} ${transfer.coinId} dari ${sourcePlatform}!`);
                 }
+            } catch (e) {
+                console.error("Gagal memproses transfer masuk:", e);
+                localStorage.removeItem('cryptoTransfer');
             }
         }
+    }
+
+    // --- RENDERING ---
+    function renderAll() {
+        renderPortfolio();
+        renderHistory();
+        renderSendPanel();
+        walletAddressEl.textContent = walletState.walletAddress;
+    }
+    
+    function renderPortfolio() {
+        const coinIds = Object.keys(walletState.portfolio);
+        if (coinIds.length === 0) {
+            portfolioListEl.innerHTML = `<p class="text-gray-500">Dompet Anda kosong. Terima koin dari platform lain untuk memulai.</p>`;
+            totalPortfolioValueEl.textContent = formatRupiah(0);
+            return;
+        }
+
+        let totalValue = 0;
+        portfolioListEl.innerHTML = coinIds.map(id => {
+            const holding = walletState.portfolio[id];
+            if(holding.quantity <= 0) return '';
+            const price = marketPrices[id]?.price || 0;
+            const value = holding.quantity * price;
+            totalValue += value;
+
+            return `
+                <div class="bg-gray-700/50 p-3 rounded-lg flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-lg">${id}</p>
+                        <p class="text-sm text-gray-400">${formatLargeNumber(holding.quantity)}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold">${formatRupiah(value)}</p>
+                        <p class="text-xs text-gray-500">@ ${formatRupiah(price)}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        totalPortfolioValueEl.textContent = formatRupiah(totalValue);
+    }
+
+    function renderHistory() {
+        if (walletState.history.length === 0) {
+            historyListEl.innerHTML = `<p class="text-gray-500">Belum ada transaksi.</p>`;
+            return;
+        }
+        historyListEl.innerHTML = walletState.history.map(tx => {
+            const isSend = tx.type === 'out';
+            const color = isSend ? 'text-red-400' : 'text-green-400';
+            const sign = isSend ? '-' : '+';
+            const target = isSend ? `Ke ${tx.destination}` : `Dari ${tx.source}`;
+            const date = new Date(tx.date).toLocaleString('id-ID');
+
+            return `
+                <div class="bg-gray-900/50 p-2 rounded-md flex justify-between items-center text-sm">
+                    <div>
+                        <p class="font-bold ${color}">${sign} ${formatLargeNumber(tx.amount)} ${tx.coinId}</p>
+                        <p class="text-xs text-gray-500">${target}</p>
+                    </div>
+                    <p class="text-xs text-gray-500">${date}</p>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function renderSendPanel() {
+        const ownedCoins = Object.keys(walletState.portfolio).filter(id => walletState.portfolio[id].quantity > 0);
+        if (ownedCoins.length === 0) {
+            sendCoinSelect.innerHTML = `<option value="">Tidak ada koin untuk dikirim</option>`;
+        } else {
+            const currentSelection = sendCoinSelect.value;
+            sendCoinSelect.innerHTML = ownedCoins.map(id => `<option value="${id}" ${id === currentSelection ? 'selected' : ''}>${id}</option>`).join('');
+        }
+        updateSendBalance();
+    }
+
+    function updateSendBalance() {
+        const selectedCoin = sendCoinSelect.value;
+        const balance = walletState.portfolio[selectedCoin]?.quantity || 0;
+        sendOwnedBalanceEl.textContent = formatLargeNumber(balance);
+    }
+
+
+    // --- EVENT LISTENERS ---
+    document.getElementById('action-tabs').addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') return;
+        document.querySelectorAll('.action-tab-btn').forEach(btn => {
+            btn.classList.remove('active', 'border-purple-500');
+            btn.classList.add('border-transparent', 'text-gray-400');
+        });
+        e.target.classList.add('active', 'border-purple-500');
+        e.target.classList.remove('border-transparent', 'text-gray-400');
         
-        document.getElementById('execute-send-btn').addEventListener('click', () => {
-            const coinId = document.getElementById('send-coin-select').value;
-            const amount = parseFloat(document.getElementById('send-amount').value);
-            const destination = document.getElementById('send-destination-select').value;
+        const tab = e.target.dataset.tab;
+        document.getElementById('send-panel').classList.toggle('hidden', tab !== 'send');
+        document.getElementById('receive-panel').classList.toggle('hidden', tab !== 'receive');
+    });
 
-            if(!coinId || isNaN(amount) || amount <= 0) {
-                alert('Input tidak valid.');
-                return;
-            }
+    sendCoinSelect.addEventListener('change', updateSendBalance);
 
-            const holding = walletState.portfolio[coinId];
-            if (!holding || holding.quantity < amount) {
-                alert('Aset di wallet tidak mencukupi.');
-                return;
-            }
+    executeSendBtn.addEventListener('click', () => {
+        const coinId = sendCoinSelect.value;
+        const amount = parseFloat(sendAmountInput.value);
+        const destination = sendDestinationSelect.value;
 
-            holding.quantity -= amount;
-            if (holding.quantity < 1e-9) {
-                delete walletState.portfolio[coinId];
-            }
+        if (!coinId || isNaN(amount) || amount <= 0) {
+            alert("Harap isi semua kolom dengan benar.");
+            return;
+        }
 
-            // Log history
-            walletState.history.push({
-                type: 'send',
-                destination: destination.replace('_', ' '),
-                coinId: coinId,
-                amount: amount,
-                timestamp: Date.now()
-            });
+        const holding = walletState.portfolio[coinId];
+        if (!holding || holding.quantity < amount) {
+            alert("Saldo koin tidak mencukupi.");
+            return;
+        }
 
-            // Create transfer for other platforms
-            const transferData = {
-                transferId: `transfer-${Date.now()}`,
-                source: 'crypto_wallet',
-                destination: destination,
-                coinId: coinId,
-                amount: amount,
-                coinData: allCryptoData[coinId]
-            };
+        // Deduct from wallet
+        holding.quantity -= amount;
+        if(holding.quantity < 1e-9) delete walletState.portfolio[coinId];
 
-            localStorage.setItem('cryptoTransfer', JSON.stringify(transferData));
+        // Create transfer data for other platforms
+        const transferData = {
+            platform: destination,
+            sourcePlatform: 'crypto_wallet',
+            transferId: `transfer-${Date.now()}`,
+            coinId: coinId,
+            amount: amount,
+        };
+        localStorage.setItem('cryptoTransfer', JSON.stringify(transferData));
 
-            alert(`Berhasil mengirim ${formatLargeNumber(amount)} ${coinId} ke ${destination.replace('_', ' ')}!`);
-            document.getElementById('send-amount').value = '';
-            saveWalletState();
-            renderAll();
-        });
-
-
-        // --- EVENT LISTENERS ---
-        document.querySelector('.container').addEventListener('click', (e) => {
-            const tab = e.target.closest('.tab');
-            if (tab) {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-                tab.classList.add('active');
-                document.getElementById(`${tab.dataset.tab}-tab`).classList.remove('hidden');
-            }
+        // Add to history
+        walletState.history.unshift({
+            id: transferData.transferId,
+            type: 'out',
+            coinId: coinId,
+            amount: amount,
+            destination: destination === 'crypto_exchange' ? 'Exchange' : 'Trading Platform',
+            date: new Date().toISOString()
         });
         
-        document.getElementById('copy-address-btn').addEventListener('click', () => {
-            const address = document.getElementById('wallet-address').textContent;
-            navigator.clipboard.writeText(address).then(() => {
-                alert('Alamat berhasil disalin!');
-            }, () => {
-                alert('Gagal menyalin alamat.');
-            });
-        });
-        
-        document.getElementById('send-coin-select').addEventListener('change', updateSendInfo);
-        document.getElementById('send-amount').addEventListener('input', updateSendInfo);
-
-        document.getElementById('reset-button').addEventListener('click', () => {
-            if (confirm('Yakin ingin mereset wallet? Semua aset di wallet akan hilang.')) {
-                localStorage.removeItem('cryptoWalletData');
-                location.reload();
-            }
-        });
-
-        // --- INIT & LOOP ---
-        loadAllStates();
+        showToast(`Mengirim ${formatLargeNumber(amount)} ${coinId}...`);
+        sendAmountInput.value = '';
+        saveState();
         renderAll();
-        setInterval(() => {
-            loadAllStates(); // Periodically check for updates from other platforms
-            checkTransfers();
-            renderPortfolio(); // Only re-render portfolio view which depends on external data
-        }, 1000);
+    });
+
+    document.getElementById('reset-button').addEventListener('click', () => {
+        if (confirm("Apakah Anda yakin ingin mereset wallet ini? Semua aset akan hilang.")) {
+            localStorage.removeItem('cryptoWalletSaveData');
+            location.reload();
+        }
+    });
+
+    // --- INIT & GAME LOOP ---
+    loadState();
+    syncMarketPrices();
+    renderAll();
+
+    setInterval(() => {
+        syncMarketPrices();
+        checkIncomingTransfers();
+        renderPortfolio(); // Re-render portfolio to reflect price changes
+    }, 1000);
+
     </script>
 </body>
 </html>
