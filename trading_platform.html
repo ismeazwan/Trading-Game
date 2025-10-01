@@ -90,7 +90,10 @@
         <header class="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap justify-between items-center shadow-lg">
             <div>
                 <h1 class="text-2xl font-bold">Platform Trading</h1>
-                <a href="index.html" class="text-sm text-purple-400 hover:underline">&larr; Kembali ke Idle Tycoon</a>
+                <div class="flex space-x-4">
+                    <a href="index.html" class="text-sm text-purple-400 hover:underline">&larr; Kembali ke Idle Tycoon</a>
+                    <a href="crypto_wallet.html" class="text-sm text-cyan-400 hover:underline">Buka Crypto Wallet &rarr;</a>
+                </div>
             </div>
             <div class="flex items-center gap-4 md:gap-6">
                 <div class="text-right mt-2 sm:mt-0">
@@ -1100,8 +1103,8 @@
                     
                     if (transferData.platform !== 'trading_platform') return;
 
-                    // Add coin to assetData if it's new
-                    if (!assetData.crypto[transferData.coinId]) {
+                    // Add coin to assetData if it's new, using the provided coinData
+                    if (!assetData.crypto[transferData.coinId] && transferData.coinData) {
                         assetData.crypto[transferData.coinId] = transferData.coinData;
                          // Initialize price history for the new coin
                         tradingState.marketPrices.crypto[transferData.coinId] = transferData.coinData.basePrice;
@@ -1114,12 +1117,12 @@
                     existing.quantity += transferData.amount;
                     
                     // Estimate cost based on current market price for simplicity
-                    const currentPrice = tradingState.marketPrices.crypto[transferData.coinId] || transferData.coinData.basePrice;
+                    const currentPrice = tradingState.marketPrices.crypto[transferData.coinId] || assetData.crypto[transferData.coinId]?.basePrice || 0;
                     existing.totalCost += transferData.amount * currentPrice;
 
                     tradingState.portfolio[portfolioKey] = existing;
 
-                    showToast(`Deposit ${formatNumber(transferData.amount)} ${transferData.coinId} berhasil!`);
+                    showToast(`Deposit ${formatNumber(transferData.amount)} ${transferData.coinId} dari ${transferData.sourcePlatform} berhasil!`);
                     localStorage.removeItem('cryptoTransfer'); // Clear after processing
                     saveState();
                     updateAllUI();
@@ -1250,4 +1253,3 @@
     </script>
 </body>
 </html>
-
