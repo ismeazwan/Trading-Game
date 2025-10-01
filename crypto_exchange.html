@@ -71,6 +71,7 @@
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="invest">Investasi</button>
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="create">Buat Koin</button>
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="bot">Trading Bot</button>
+                    <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="transfer">Transfer</button>
                     <button class="tab border-transparent py-2 px-3 md:px-4 text-sm font-medium border-b-2" data-tab="withdraw">Tarik Saldo</button>
                 </nav>
             </div>
@@ -276,6 +277,25 @@
                     </div>
                 </div>
             </div>
+             <div id="transfer-tab" class="tab-content hidden">
+                 <h2 class="text-2xl font-bold mb-4">Transfer Koin Antar Platform</h2>
+                 <div class="bg-gray-800 p-6 rounded-lg max-w-md mx-auto">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="transfer-coin-select" class="text-sm">Pilih Koin</label>
+                            <select id="transfer-coin-select" class="w-full bg-gray-700 p-2 rounded mt-1"></select>
+                        </div>
+                        <div>
+                            <label for="transfer-amount" class="text-sm">Jumlah</label>
+                            <input id="transfer-amount" type="number" placeholder="0" class="w-full bg-gray-700 p-2 rounded mt-1">
+                        </div>
+                        <p class="text-sm text-gray-400">Dimiliki: <span id="transfer-owned-amount">0</span></p>
+                        <p class="text-sm text-gray-400">Biaya Transfer (1%): <span id="transfer-fee">0 Koin</span></p>
+                        <p class="text-sm font-semibold">Jumlah Diterima: <span id="transfer-net-amount">0 Koin</span></p>
+                        <button id="execute-transfer-btn" class="w-full bg-purple-600 hover:bg-purple-700 font-bold py-3 px-4 rounded transition duration-200">Transfer ke Platform Trading</button>
+                    </div>
+                </div>
+            </div>
              <div id="withdraw-tab" class="tab-content hidden">
                  <h2 class="text-2xl font-bold mb-4">Tarik Saldo Tunai</h2>
                  <div class="bg-gray-800 p-6 rounded-lg max-w-md mx-auto">
@@ -457,6 +477,7 @@
                 if (activeTab === 'trade') renderTrade();
                 else if (activeTab === 'invest') renderStaking();
                 else if (activeTab === 'bot') renderBotTab();
+                else if (activeTab === 'transfer') renderTransferTab();
                 else if (activeTab === 'withdraw') renderWithdrawTab();
             } catch (e) {
                 console.error("Error saat me-render tampilan utama:", e);
@@ -768,6 +789,45 @@
             document.getElementById('withdraw-available-balance').textContent = formatCurrency(gameState.balance);
         }
 
+        function renderTransferTab() {
+            const coinSelect = document.getElementById('transfer-coin-select');
+            const ownedCoins = Object.keys(gameState.portfolio).filter(id => gameState.portfolio[id].quantity > 0);
+            
+            if (ownedCoins.length === 0) {
+                coinSelect.innerHTML = `<option value="">Anda tidak memiliki koin</option>`;
+            } else {
+                coinSelect.innerHTML = ownedCoins.map(id => `<option value="${id}">${cryptoData[id].name} (${id})</option>`).join('');
+            }
+            updateTransferInfo();
+        }
+
+        function updateTransferInfo() {
+            const coinSelect = document.getElementById('transfer-coin-select');
+            const amountInput = document.getElementById('transfer-amount');
+            const ownedAmountEl = document.getElementById('transfer-owned-amount');
+            const feeEl = document.getElementById('transfer-fee');
+            const netAmountEl = document.getElementById('transfer-net-amount');
+            
+            const selectedCoinId = coinSelect.value;
+            if (!selectedCoinId) {
+                ownedAmountEl.textContent = '0';
+                feeEl.textContent = '0 Koin';
+                netAmountEl.textContent = '0 Koin';
+                return;
+            }
+
+            const owned = gameState.portfolio[selectedCoinId]?.quantity || 0;
+            ownedAmountEl.textContent = formatLargeNumber(owned);
+            
+            const amount = parseFloat(amountInput.value) || 0;
+            const fee = amount * 0.01;
+            const netAmount = amount - fee;
+
+            feeEl.textContent = `${formatLargeNumber(fee)} ${selectedCoinId}`;
+            netAmountEl.textContent = `${formatLargeNumber(netAmount > 0 ? netAmount : 0)} ${selectedCoinId}`;
+        }
+
+
         function renderOpenOrders() {
             const listEl = document.getElementById('open-orders-list');
             const openOrders = gameState.limitOrders.filter(order => order.status === 'open');
@@ -902,7 +962,10 @@
                 updateStakingData();
             } else if (activeTab === 'bot') {
                 renderBotTab();
-            } else if (activeTab === 'withdraw') {
+            } else if (activeTab === 'transfer') {
+                renderTransferTab();
+            }
+            else if (activeTab === 'withdraw') {
                 renderWithdrawTab();
             }
         }
@@ -1122,6 +1185,7 @@
 
         document.getElementById('reset-button').addEventListener('click', () => {
             localStorage.removeItem('cryptoExchangeData');
+            localStorage.removeItem('cryptoTransfer');
             location.reload();
         });
 
@@ -1347,6 +1411,46 @@
             document.getElementById('withdraw-amount').value = '';
             renderWithdrawTab();
             saveState();
+        });
+
+        // --- Transfer Listeners ---
+        document.getElementById('transfer-coin-select').addEventListener('change', updateTransferInfo);
+        document.getElementById('transfer-amount').addEventListener('input', updateTransferInfo);
+
+        document.getElementById('execute-transfer-btn').addEventListener('click', () => {
+            const coinId = document.getElementById('transfer-coin-select').value;
+            const amount = parseFloat(document.getElementById('transfer-amount').value);
+
+            if (!coinId) return alert('Pilih koin untuk ditransfer.');
+            if (isNaN(amount) || amount <= 0) return alert('Jumlah transfer tidak valid.');
+
+            const holding = gameState.portfolio[coinId];
+            if (!holding || holding.quantity < amount) return alert('Koin yang Anda miliki tidak cukup.');
+
+            const fee = amount * 0.01;
+            const amountAfterFee = amount - fee;
+
+            // Deduct from portfolio
+            holding.quantity -= amount;
+            if (holding.quantity < 1e-9) delete gameState.portfolio[coinId];
+
+            // Create transfer data
+            const transferData = {
+                platform: 'trading_platform',
+                transferId: `transfer-${Date.now()}`,
+                coinId: coinId,
+                amount: amountAfterFee,
+                coinData: cryptoData[coinId] 
+            };
+            
+            // Store in localStorage for the other platform to pick up
+            localStorage.setItem('cryptoTransfer', JSON.stringify(transferData));
+            
+            alert(`Transfer ${formatLargeNumber(amount)} ${coinId} berhasil! Jumlah ${formatLargeNumber(amountAfterFee)} ${coinId} akan diterima di Platform Trading.`);
+            
+            document.getElementById('transfer-amount').value = '';
+            saveState();
+            renderTransferTab();
         });
 
 
