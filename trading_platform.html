@@ -333,10 +333,10 @@
         }
 
         function formatCurrency(num, decimals) {
-            if (decimals !== undefined && Math.abs(num) < 1e6) {
-                 return `Rp ${num.toLocaleString('id-ID', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
-            }
-            return formatWithSuffix(num, 'Rp ');
+            // This platform uses USD as base for crypto, so we will use a simplified formatter
+            if (num > 1000000) return `$${(num / 1000000).toFixed(2)}M`;
+            if (num > 1000) return `$${(num / 1000).toFixed(2)}K`;
+            return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals === undefined ? 2 : decimals, maximumFractionDigits: decimals === undefined ? 2 : decimals })}`;
         }
         
         function formatNumber(num) {
@@ -385,6 +385,67 @@
                 console.error("Gagal menyimpan data trading:", e);
             }
         }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 4000);
+        }
+
+        function checkForTransfers() {
+            const transferDataJSON = localStorage.getItem('cryptoTransfer');
+            if (transferDataJSON) {
+                try {
+                    const transferData = JSON.parse(transferDataJSON);
+                    
+                    if (transferData.platform === 'trading_platform' && transferData.coinId && transferData.amount > 0) {
+                        const { coinId, amount, coinData } = transferData;
+                        
+                        // If coin does not exist on this platform, add it
+                        if (!assetData.crypto[coinId]) {
+                            assetData.crypto[coinId] = {
+                                name: coinData.name,
+                                basePrice: coinData.basePrice / 15000, // Convert from Rp to approx USD
+                                volatility: coinData.volatility,
+                            };
+                            tradingState.marketPrices.crypto[coinId] = assetData.crypto[coinId].basePrice;
+                            tradingState.priceHistory.crypto[coinId] = Array(100).fill(assetData.crypto[coinId].basePrice);
+                            console.log(`Aset baru ${coinId} ditambahkan ke platform.`);
+                        }
+
+                        // Add the amount to the portfolio
+                        const portfolioKey = `crypto_${coinId}`;
+                        const existing = tradingState.portfolio[portfolioKey] || { quantity: 0, totalCost: 0 };
+                        
+                        existing.quantity += amount;
+                        
+                        const currentPrice = tradingState.marketPrices.crypto[coinId] || 0;
+                        existing.totalCost += amount * currentPrice;
+                        
+                        tradingState.portfolio[portfolioKey] = existing;
+                        
+                        showToast(`Deposit diterima: ${formatNumber(amount)} ${coinId}`);
+                        
+                        // Clear the transfer data from localStorage
+                        localStorage.removeItem('cryptoTransfer');
+                        saveState();
+                        
+                        // If the user is on the crypto tab, refresh the list
+                        if (activeAssetTab === 'crypto') {
+                            renderAssetList();
+                        }
+                    } else {
+                        // Data might be for another platform or invalid, remove it
+                        localStorage.removeItem('cryptoTransfer');
+                    }
+                } catch (e) {
+                    console.error("Gagal memproses data transfer:", e);
+                    localStorage.removeItem('cryptoTransfer'); // Clear corrupted data
+                }
+            }
+        }
+
 
         // --- Market & Analysis Engine ---
         function updateMarketPrices() {
@@ -456,7 +517,8 @@
                 const oldPrice = history[history.length - 2] || price;
                 const priceChange = price - oldPrice;
                 const color = priceChange >= 0 ? 'text-green-400' : 'text-red-400';
-                const formatter = asset.decimals !== undefined ? (p) => formatCurrency(p, asset.decimals) : formatCurrency;
+                
+                const formatter = (p) => formatCurrency(p, asset.decimals);
 
                 return `
                     <div class="asset-item cursor-pointer p-2 rounded-md hover:bg-gray-700 flex justify-between items-center" data-id="${id}" data-category="${activeAssetTab}">
@@ -618,7 +680,7 @@
                 return `
                 <div class="flex justify-between items-center text-sm py-1 border-b border-gray-700">
                     <div>
-                        <p class="font-bold">${id}</p>
+                        <p class="font-bold">${id} (${category})</p>
                         <p class="text-xs text-gray-400">Qty: ${formatNumber(holdings.quantity)}</p>
                     </div>
                     <div class="text-right">
@@ -865,6 +927,7 @@
         function gameLoop() {
             updateMarketPrices();
             checkLimitOrders();
+            checkForTransfers();
             updateAllUI();
         }
         
@@ -988,5 +1051,3 @@
     </script>
 </body>
 </html>
-
-
