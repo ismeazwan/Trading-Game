@@ -792,11 +792,12 @@
         function renderTransferTab() {
             const coinSelect = document.getElementById('transfer-coin-select');
             const ownedCoins = Object.keys(gameState.portfolio).filter(id => gameState.portfolio[id].quantity > 0);
+            const currentSelection = coinSelect.value;
             
             if (ownedCoins.length === 0) {
                 coinSelect.innerHTML = `<option value="">Anda tidak memiliki koin</option>`;
             } else {
-                coinSelect.innerHTML = ownedCoins.map(id => `<option value="${id}">${cryptoData[id].name} (${id})</option>`).join('');
+                coinSelect.innerHTML = ownedCoins.map(id => `<option value="${id}" ${id === currentSelection ? 'selected' : ''}>${cryptoData[id].name} (${id})</option>`).join('');
             }
             updateTransferInfo();
         }
@@ -963,7 +964,7 @@
             } else if (activeTab === 'bot') {
                 renderBotTab();
             } else if (activeTab === 'transfer') {
-                renderTransferTab();
+                updateTransferInfo(); // FIX: Only update info, not the entire dropdown
             }
             else if (activeTab === 'withdraw') {
                 renderWithdrawTab();
@@ -1184,9 +1185,11 @@
         });
 
         document.getElementById('reset-button').addEventListener('click', () => {
-            localStorage.removeItem('cryptoExchangeData');
-            localStorage.removeItem('cryptoTransfer');
-            location.reload();
+            if(confirm('Apakah Anda yakin ingin mereset semua kemajuan? Aksi ini tidak dapat dibatalkan.')){
+                localStorage.removeItem('cryptoExchangeData');
+                localStorage.removeItem('cryptoTransfer');
+                location.reload();
+            }
         });
 
         function handleMarketTrade(type) {
@@ -1627,3 +1630,4 @@
     </script>
 </body>
 </html>
+
