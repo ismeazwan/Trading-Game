@@ -16,7 +16,10 @@
         <header class="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap justify-between items-center shadow-lg">
             <div>
                 <h1 class="text-2xl font-bold">Crypto Wallet Saya</h1>
-                <a href="index.html" class="text-sm text-purple-400 hover:underline block text-center md:text-left">&larr; Kembali ke Idle Tycoon</a>
+                 <div class="flex space-x-4 mt-1">
+                    <a href="trading_platform.html" class="text-sm text-purple-400 hover:underline">&larr; Ke Platform Trading</a>
+                    <a href="crypto_exchange (2).html" class="text-sm text-cyan-400 hover:underline">Ke Crypto Exchange &rarr;</a>
+                </div>
             </div>
             <div class="text-right mt-4 sm:mt-0">
                 <p class="text-gray-400 text-sm">Total Nilai Aset</p>
@@ -94,6 +97,7 @@
     // --- STATE & SETUP ---
     const defaultWalletState = {
         portfolio: {}, // e.g., { BTC: { quantity: 1.5 }, ETH: { quantity: 0.5 } }
+        coinDefinitions: {}, // Stores coin metadata like { BTC: { name: "Bitcoin", ... } }
         history: [],   // e.g., { id, type, coinId, amount, source/dest, date }
         walletAddress: ''
     };
@@ -129,7 +133,9 @@
     // --- STATE MANAGEMENT ---
     function loadState() {
         const saved = localStorage.getItem('cryptoWalletSaveData');
-        walletState = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultWalletState));
+        const cleanState = JSON.parse(JSON.stringify(defaultWalletState));
+        walletState = saved ? {...cleanState, ...JSON.parse(saved)} : cleanState;
+        
         if (!walletState.walletAddress) {
             walletState.walletAddress = 'W' + Date.now().toString(36) + Math.random().toString(36).substr(2).toUpperCase();
         }
@@ -142,12 +148,19 @@
     // --- CORE LOGIC ---
     function syncMarketPrices() {
         try {
+            // Sync from both exchange and trading platform for wider price coverage
             const exchangeData = JSON.parse(localStorage.getItem('cryptoExchangeData'));
             if (exchangeData && exchangeData.marketPrices) {
-                marketPrices = exchangeData.marketPrices;
+                marketPrices = {...marketPrices, ...exchangeData.marketPrices };
             }
+
+            const tradingPlatformData = JSON.parse(localStorage.getItem('tradingPlatformSaveData'));
+            if (tradingPlatformData && tradingPlatformData.marketPrices && tradingPlatformData.marketPrices.crypto) {
+                marketPrices = {...marketPrices, ...tradingPlatformData.marketPrices.crypto };
+            }
+
         } catch (e) {
-            console.warn("Could not sync market prices from exchange.");
+            console.warn("Could not sync market prices.");
         }
     }
     
@@ -171,8 +184,18 @@
                     holding.quantity += transfer.amount;
                     walletState.portfolio[transfer.coinId] = holding;
 
+                    // Save coin definition if it's new
+                    if (!walletState.coinDefinitions[transfer.coinId] && transfer.coinData) {
+                        walletState.coinDefinitions[transfer.coinId] = transfer.coinData;
+                    }
+
                     // Add to history
-                    const sourcePlatform = transfer.sourcePlatform === 'crypto_exchange' ? 'Exchange' : 'Trading Platform';
+                    const sourcePlatformNameMap = {
+                        'crypto_exchange': 'Exchange',
+                        'trading_platform': 'Platform Trading'
+                    };
+                    const sourcePlatform = sourcePlatformNameMap[transfer.sourcePlatform] || 'Unknown';
+                    
                     walletState.history.unshift({
                         id: transfer.transferId,
                         type: 'in',
@@ -308,6 +331,12 @@
             alert("Saldo koin tidak mencukupi.");
             return;
         }
+        
+        const coinData = walletState.coinDefinitions[coinId];
+        if (!coinData) {
+            alert(`Detail data untuk ${coinId} tidak ditemukan. Transfer dibatalkan.`);
+            return;
+        }
 
         // Deduct from wallet
         holding.quantity -= amount;
@@ -320,16 +349,21 @@
             transferId: `transfer-${Date.now()}`,
             coinId: coinId,
             amount: amount,
+            coinData: coinData // Include coin metadata for the receiving platform
         };
         localStorage.setItem('cryptoTransfer', JSON.stringify(transferData));
 
         // Add to history
+         const destinationNameMap = {
+            'crypto_exchange': 'Exchange',
+            'trading_platform': 'Platform Trading'
+        };
         walletState.history.unshift({
             id: transferData.transferId,
             type: 'out',
             coinId: coinId,
             amount: amount,
-            destination: destination === 'crypto_exchange' ? 'Exchange' : 'Trading Platform',
+            destination: destinationNameMap[destination] || 'Unknown',
             date: new Date().toISOString()
         });
         
@@ -342,6 +376,7 @@
     document.getElementById('reset-button').addEventListener('click', () => {
         if (confirm("Apakah Anda yakin ingin mereset wallet ini? Semua aset akan hilang.")) {
             localStorage.removeItem('cryptoWalletSaveData');
+            localStorage.removeItem('cryptoTransfer');
             location.reload();
         }
     });
@@ -360,3 +395,4 @@
     </script>
 </body>
 </html>
+
