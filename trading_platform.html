@@ -194,7 +194,7 @@
             </div>
         </div>
         
-         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
              <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
                 <h2 class="text-xl font-bold mb-2">Portofolio Anda</h2>
                 <div id="portfolio-list" class="max-h-48 overflow-y-auto">
@@ -236,6 +236,28 @@
                         <p class="flex justify-between"><span>Biaya (0.2%):</span> <span id="swap-fee">0</span></p>
                    </div>
                    <button id="execute-swap-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mt-2">Swap</button>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-2">Transfer Koin</h2>
+                <div id="transfer-container" class="space-y-2">
+                   <div class="space-y-1">
+                        <label class="text-xs text-gray-400">Aset</label>
+                        <select id="transfer-coin-select" class="w-full bg-gray-700 p-2 rounded-md text-sm"></select>
+                        <p class="text-xs text-gray-500">Dimiliki: <span id="transfer-owned-balance">0</span></p>
+                   </div>
+                   <div class="space-y-1">
+                        <label class="text-xs text-gray-400">Jumlah</label>
+                        <input type="number" id="transfer-amount" class="w-full bg-gray-700 p-2 rounded-md text-sm" placeholder="0">
+                   </div>
+                   <div class="space-y-1">
+                        <label class="text-xs text-gray-400">Ke Platform</label>
+                        <select id="transfer-destination-select" class="w-full bg-gray-700 p-2 rounded-md text-sm">
+                            <option value="crypto_wallet">Crypto Wallet</option>
+                            <option value="crypto_exchange">Crypto Exchange</option>
+                        </select>
+                   </div>
+                   <button id="execute-transfer-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded mt-2">Transfer</button>
                 </div>
             </div>
         </div>
@@ -347,6 +369,13 @@
         const swapRateEl = document.getElementById('swap-rate');
         const swapFeeEl = document.getElementById('swap-fee');
         const executeSwapBtn = document.getElementById('execute-swap-btn');
+
+        // Transfer UI elements
+        const transferCoinSelectEl = document.getElementById('transfer-coin-select');
+        const transferAmountEl = document.getElementById('transfer-amount');
+        const transferOwnedBalanceEl = document.getElementById('transfer-owned-balance');
+        const transferDestinationSelectEl = document.getElementById('transfer-destination-select');
+        const executeTransferBtn = document.getElementById('execute-transfer-btn');
 
         // --- Formatting & State Management ---
         function formatWithSuffix(num, prefix = '') {
@@ -662,38 +691,39 @@
             const keys = Object.keys(tradingState.portfolio);
             if(keys.length === 0) {
                 portfolioListEl.innerHTML = `<p class="text-gray-500">Anda belum memiliki aset.</p>`;
-                return;
+            } else {
+                portfolioListEl.innerHTML = keys.map(key => {
+                    const [category, id] = key.split('_');
+                    const holdings = tradingState.portfolio[key];
+                    const asset = assetData[category]?.[id];
+                    if (!asset) return '';
+                    const currentPrice = tradingState.marketPrices[category]?.[id];
+                    if (currentPrice === undefined) return '';
+
+                    const isUsdBased = category === 'crypto' || category === 'forex';
+                    
+                    const currentValue = holdings.quantity * currentPrice;
+                    const pnl = currentValue - holdings.totalCost;
+
+                    const displayValue = isUsdBased ? currentValue * USD_TO_IDR : currentValue;
+                    const displayPnl = isUsdBased ? pnl * USD_TO_IDR : pnl;
+
+                    const pnlColor = displayPnl >= 0 ? 'text-green-400' : 'text-red-400';
+                    return `
+                    <div class="flex justify-between items-center text-sm py-1 border-b border-gray-700">
+                        <div>
+                            <p class="font-bold">${id} (${category})</p>
+                            <p class="text-xs text-gray-400">Qty: ${formatNumber(holdings.quantity)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p>${formatRupiah(displayValue)}</p>
+                            <p class="${pnlColor}">${displayPnl >= 0 ? '+' : ''}${formatRupiah(displayPnl)}</p>
+                        </div>
+                    </div>`;
+                }).join('');
             }
-            portfolioListEl.innerHTML = keys.map(key => {
-                const [category, id] = key.split('_');
-                const holdings = tradingState.portfolio[key];
-                const asset = assetData[category]?.[id];
-                if (!asset) return '';
-                const currentPrice = tradingState.marketPrices[category]?.[id];
-                if (currentPrice === undefined) return '';
-
-                const isUsdBased = category === 'crypto' || category === 'forex';
-                
-                const currentValue = holdings.quantity * currentPrice;
-                const pnl = currentValue - holdings.totalCost;
-
-                const displayValue = isUsdBased ? currentValue * USD_TO_IDR : currentValue;
-                const displayPnl = isUsdBased ? pnl * USD_TO_IDR : pnl;
-
-                const pnlColor = displayPnl >= 0 ? 'text-green-400' : 'text-red-400';
-                return `
-                <div class="flex justify-between items-center text-sm py-1 border-b border-gray-700">
-                    <div>
-                        <p class="font-bold">${id} (${category})</p>
-                        <p class="text-xs text-gray-400">Qty: ${formatNumber(holdings.quantity)}</p>
-                    </div>
-                    <div class="text-right">
-                        <p>${formatRupiah(displayValue)}</p>
-                        <p class="${pnlColor}">${displayPnl >= 0 ? '+' : ''}${formatRupiah(displayPnl)}</p>
-                    </div>
-                </div>`;
-            }).join('');
             renderSwapUI();
+            renderTransferUI();
         }
 
         function renderActiveOrders() {
@@ -1037,6 +1067,76 @@
             saveState();
         }
 
+        // --- TRANSFER LOGIC ---
+        function renderTransferUI() {
+            const ownedCrypto = Object.keys(tradingState.portfolio)
+                .filter(key => key.startsWith('crypto_') && tradingState.portfolio[key].quantity > 0)
+                .map(key => key.split('_')[1]);
+
+            const currentSelection = transferCoinSelectEl.value;
+            transferCoinSelectEl.innerHTML = ownedCrypto.length > 0 
+                ? ownedCrypto.map(id => `<option value="${id}" ${id === currentSelection ? 'selected' : ''}>${id}</option>`).join('')
+                : '<option value="">Tidak ada koin</option>';
+            
+            updateTransferPreview();
+        }
+
+        function updateTransferPreview() {
+            const coinId = transferCoinSelectEl.value;
+            if (!coinId) {
+                transferOwnedBalanceEl.textContent = '0';
+                return;
+            }
+            const portfolioKey = `crypto_${coinId}`;
+            const owned = tradingState.portfolio[portfolioKey]?.quantity || 0;
+            transferOwnedBalanceEl.textContent = formatNumber(owned);
+        }
+
+        function executeTransfer() {
+            const coinId = transferCoinSelectEl.value;
+            const amount = parseFloat(transferAmountEl.value) || 0;
+            const destination = transferDestinationSelectEl.value;
+
+            if (!coinId || amount <= 0) {
+                alert("Input transfer tidak valid.");
+                return;
+            }
+
+            const portfolioKey = `crypto_${coinId}`;
+            const holding = tradingState.portfolio[portfolioKey];
+
+            if (!holding || holding.quantity < amount) {
+                alert("Saldo tidak mencukupi untuk transfer.");
+                return;
+            }
+
+            // Deduct from portfolio
+            const avgPrice = holding.totalCost / holding.quantity;
+            const costOfTransferredPortion = amount * avgPrice;
+            holding.quantity -= amount;
+            holding.totalCost -= costOfTransferredPortion;
+            if (holding.quantity < 1e-9) {
+                delete tradingState.portfolio[portfolioKey];
+            }
+            
+            // Create transfer data
+            const transferData = {
+                platform: destination,
+                sourcePlatform: 'trading_platform',
+                transferId: `transfer-${Date.now()}`,
+                coinId: coinId,
+                amount: amount,
+                coinData: assetData.crypto[coinId] // Pass coin metadata
+            };
+
+            localStorage.setItem('cryptoTransfer', JSON.stringify(transferData));
+
+            showToast(`Transfer ${formatNumber(amount)} ${coinId} ke ${destination} dimulai...`);
+            transferAmountEl.value = '';
+            updateAllUI();
+            saveState();
+        }
+
 
         // --- Global UI & Game Loop ---
         function updateAllUI() {
@@ -1234,6 +1334,10 @@
         swapFromAmountEl.addEventListener('input', updateSwapPreview);
         executeSwapBtn.addEventListener('click', executeSwap);
 
+        // Transfer Listeners
+        transferCoinSelectEl.addEventListener('change', updateTransferPreview);
+        executeTransferBtn.addEventListener('click', executeTransfer);
+
         // Reset listener
         document.getElementById('reset-button').addEventListener('click', () => {
             if (confirm('Apakah Anda yakin ingin mereset semua kemajuan di platform ini? Aksi ini tidak akan bisa dibatalkan.')) {
@@ -1253,3 +1357,4 @@
     </script>
 </body>
 </html>
+
